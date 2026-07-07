@@ -1,0 +1,57 @@
+# Environment Variables
+.env
+.env.*
+!.env.example
+
+# VS Code / IDE
+.vscode/
+.idea/
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+
+# Node / Next.js (web)
+node_modules/
+.next/
+out/
+coverage/
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Python (core + intelligence)
+__pycache__/
+*.py[cod]
+
+*.egg-info/
+
+.venv/
+venv/
+
+.pytest_cache/
+.mypy_cache/
+
+# Logs
+*.log
+
+# Database / Storage
+*.sqlite
+*.db
+
+# AI vector database
+chroma_db/
+
+# Uploaded files
+storage/uploads/
+
+# Build Files
+dist/
+build/
+
+# Temporary Files
+*.tmp
+*.temp
+.cache/
