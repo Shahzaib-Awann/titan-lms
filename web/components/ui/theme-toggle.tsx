@@ -17,58 +17,17 @@ export function ThemeToggle() {
     <DropdownMenu>
       <DropdownMenuTrigger
         className="
-          relative
-          inline-flex
-          h-11
-          w-11
-          items-center
-          justify-center
-          rounded-xl
-          border
-          border-border
-          bg-card
-          text-muted-foreground
-          shadow-sm
-          transition-all
-          duration-200
-          hover:-translate-y-0.5
-          hover:border-primary/30
-          hover:bg-accent
-          hover:text-primary
-          hover:shadow-md
-          focus-visible:outline-none
-          focus-visible:ring-2
-          focus-visible:ring-primary
-          focus-visible:ring-offset-2
-          focus-visible:ring-offset-background
+          relative inline-flex h-11 w-11
+          items-center justify-center rounded-xl border
+          border-border bg-card text-muted-foreground shadow-sm
+          transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30
+          hover:bg-accent hover:text-primary hover:shadow-md focus-visible:outline-none
+          focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background
         "
       >
-        <Sun
-          className="
-            h-5
-            w-5
-            rotate-0
-            scale-100
-            transition-all
-            duration-300
-            dark:-rotate-90
-            dark:scale-0
-          "
-        />
+        <Sun className="size-5 rotate-0 scale-100 transition-all duration-300 dark:-rotate-90 dark:scale-0" />
 
-        <Moon
-          className="
-            absolute
-            h-5
-            w-5
-            rotate-90
-            scale-0
-            transition-all
-            duration-300
-            dark:rotate-0
-            dark:scale-100
-          "
-        />
+        <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all duration-300 dark:rotate-0 dark:scale-100" />
 
         <span className="sr-only">
           Toggle theme
