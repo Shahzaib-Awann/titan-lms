@@ -16,46 +16,74 @@ jobs:
           fetch-depth: 0
 
       - name: Check modified folders
+        shell: bash
         run: |
-          AUTHOR="${{ github.actor }}"
+          # 1. Use the PR author instead of the workflow trigger actor
+          AUTHOR="${{ github.event.pull_request.user.login }}"
+          BASE_BRANCH="${{ github.base_ref }}"
+          
+          echo "PR Author: $AUTHOR"
+          echo "Target Branch: $BASE_BRANCH"
 
-          echo "Author: $AUTHOR"
+          # 2. Securely fetch the target branch
+          git fetch origin "$BASE_BRANCH"
 
-          git fetch origin main
-
-          CHANGED_FILES=$(git diff --name-only origin/main...HEAD)
-
+          # 3. Safely quote the entire git diff argument and store in a variable
+          CHANGED_FILES=$(git diff --name-only "origin/$BASE_BRANCH"...HEAD)
+          
           echo "Changed files:"
           echo "$CHANGED_FILES"
 
-          ALLOWED=""
-
-          case "$AUTHOR" in
-            Shahzaib-Awann)
-              ALLOWED="web/"
-              ;;
-            hasnainyaqub)
-              ALLOWED="intelligence/"
-              ;;
-            m-adil-dev)
-              ALLOWED="core/"
-              ;;
-            *)
-              echo "Unknown developer."
-              exit 1
-              ;;
-          esac
-
-          for FILE in $CHANGED_FILES
-          do
-            if [[ "$FILE" != "$ALLOWED"* && "$FILE" != ".github/"* ]]; then
-              echo ""
-              echo "❌ Unauthorized file:"
-              echo "$FILE"
-              echo ""
-              echo "You may only modify files inside $ALLOWED"
-              exit 1
+          # 4. Read via Herestring (<<<) to stay in the main shell
+          while IFS= read -r FILE; do
+            
+            # Skip empty lines
+            if [[ -z "$FILE" ]]; then
+              continue
             fi
-          done
+
+            echo "Checking: $FILE"
+
+            # 5. Clean, maintainable case statement for permissions
+            case "$AUTHOR" in
+              Shahzaib-Awann)
+                if [[ "$FILE" == "core/"* ]] || [[ "$FILE" == "intelligence/"* ]]; then
+                  echo ""
+                  echo "❌ Shahzaib cannot modify: $FILE"
+                  echo "Only Adil owns /core and Hassnain owns /intelligence"
+                  exit 1
+                fi
+                ;;
+                
+              hasnainyaqub)
+                if [[ "$FILE" == ".github/"* ]] || [[ "$FILE" == "web/"* ]] || [[ "$FILE" == "core/"* ]]; then
+                  echo ""
+                  echo "❌ Hassnain cannot modify: $FILE"
+                  echo "Allowed: repository root + /intelligence"
+                  exit 1
+                fi
+                ;;
+                
+              m-adil-dev)
+                if [[ "$FILE" == ".github/"* ]] || [[ "$FILE" == "web/"* ]] || [[ "$FILE" == "intelligence/"* ]]; then
+                  echo ""
+                  echo "❌ Adil cannot modify: $FILE"
+                  echo "Allowed: repository root + /core"
+                  exit 1
+                fi
+                ;;
+                
+              *)
+                # Unknown users can only modify root files (like README.md)
+                if [[ "$FILE" == ".github/"* ]] || [[ "$FILE" == "web/"* ]] || [[ "$FILE" == "core/"* ]] || [[ "$FILE" == "intelligence/"* ]]; then
+                  echo ""
+                  echo "❌ Unauthorized contributor ($AUTHOR) modifying protected directory:"
+                  echo "$FILE"
+                  exit 1
+                fi
+                ;;
+            esac
+
+          done <<< "$CHANGED_FILES"
 
           echo "✅ Folder permission check passed."
