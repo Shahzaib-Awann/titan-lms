@@ -1,0 +1,61 @@
+name: Folder Permission Check
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  check-folder:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check modified folders
+        run: |
+          AUTHOR="${{ github.actor }}"
+
+          echo "Author: $AUTHOR"
+
+          git fetch origin main
+
+          CHANGED_FILES=$(git diff --name-only origin/main...HEAD)
+
+          echo "Changed files:"
+          echo "$CHANGED_FILES"
+
+          ALLOWED=""
+
+          case "$AUTHOR" in
+            Shahzaib-Awann)
+              ALLOWED="web/"
+              ;;
+            hasnainyaqub)
+              ALLOWED="intelligence/"
+              ;;
+            m-adil-dev)
+              ALLOWED="core/"
+              ;;
+            *)
+              echo "Unknown developer."
+              exit 1
+              ;;
+          esac
+
+          for FILE in $CHANGED_FILES
+          do
+            if [[ "$FILE" != "$ALLOWED"* && "$FILE" != ".github/"* ]]; then
+              echo ""
+              echo "❌ Unauthorized file:"
+              echo "$FILE"
+              echo ""
+              echo "You may only modify files inside $ALLOWED"
+              exit 1
+            fi
+          done
+
+          echo "✅ Folder permission check passed."
