@@ -1,7 +1,10 @@
 from fastapi import FastAPI
+from api.chatbot_router import router
 
-app = FastAPI(title="Titan LMS Intelligence")
+app = FastAPI()
 
-@app.get("/")
+@app.get('/')
 def home():
-    return {"message": "Titan Intelligence API"}
+    return {'message':'Chatbot'}
+
+app.include_router(router, prefix="/chatbot")
