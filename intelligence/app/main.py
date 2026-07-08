@@ -3,6 +3,7 @@ from api.chatbot_router import router
 
 app = FastAPI()
 
+# Get Route for testing
 @app.get('/')
 def home():
     return {'message':'Chatbot'}
