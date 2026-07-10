@@ -37,6 +37,12 @@
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
 
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
   --color-online: #23a55a;
   --color-idle: #f0b232;
   --color-dnd: #f23f43;
@@ -74,7 +80,7 @@
   --popover-foreground: #171b2e;
 
   /* Brand */
-  --primary: #6c5ce7;
+  --primary: #713ceb;
   --primary-foreground: #ffffff;
 
   --secondary: #eef1fa;
@@ -89,8 +95,8 @@
   --destructive: #e5484d;
   --destructive-foreground: #ffffff;
 
-  --border: #e7eaf3;
-  --input: #e7eaf3;
+  --border: #d9deeb;
+  --input: #d9deeb;
   --ring: #6c5ce7;
 
   --sidebar-background: 0 0% 100%;

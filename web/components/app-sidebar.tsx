@@ -2,7 +2,6 @@
 
 import * as React from "react";
 
-import { NavUser } from "@/components/nav-user";
 import { SideBarHeader } from "@/components/side-bar-header";
 import {
   Sidebar,
@@ -13,25 +12,17 @@ import {
 } from "@/components/ui/sidebar";
 import { NavMain } from "./nav-main";
 
-const data = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
-};
-
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar variant="floating" collapsible="icon" {...props}>
       <SidebarHeader className="p-0">
         <SideBarHeader />
       </SidebarHeader>
-      <SidebarContent className="px-1">
+      <SidebarContent className="px-1 py-1">
         <NavMain />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <p>Footer</p>
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

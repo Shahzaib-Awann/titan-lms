@@ -264,14 +264,14 @@ function SidebarTrigger({
       data-slot="sidebar-trigger"
       variant="glass"
       size="icon"
-      className={cn(className, "p-3 ")}
+      className={cn(className, "group")}
       onClick={(event) => {
         onClick?.(event)
         toggleSidebar()
       }}
       {...props}
     >
-      <PanelLeftIcon className="rotate-90 scale-0 transition-all duration-300 dark:rotate-0 dark:scale-100"  />
+      <PanelLeftIcon className="size-5 text-muted-foreground transition-colors duration-300 group-hover:text-primary"  />
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   )

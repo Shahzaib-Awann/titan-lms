@@ -1,12 +1,15 @@
 "use client";
 
 import {
-  SquareTerminal,
-  Bot,
   BookOpen,
   Settings2,
   ChevronRight,
   type LucideIcon,
+  GraduationCap,
+  BarChart3,
+  ClipboardList,
+  Users,
+  LayoutDashboard,
 } from "lucide-react";
 
 import {
@@ -41,50 +44,68 @@ type NavItem = {
 
 const navLinks: NavItem[] = [
   {
-    title: "Playground",
-    url: "#",
-    icon: SquareTerminal,
+    title: "Dashboard",
+    url: "/",
+    icon: LayoutDashboard,
+  },
+  {
+    title: "User Management",
+    url: "/users",
+    icon: Users,
     children: [
-      { title: "History", url: "#" },
-      { title: "Starred", url: "#" },
-      { title: "Settings", url: "#" },
+      { title: "Students", url: "/users/students" },
+      { title: "Teachers", url: "/users/teachers" },
+      { title: "Administrators", url: "/users/admins" },
     ],
   },
   {
-    title: "Models",
-    url: "/go",
-    icon: Bot,
-    children: [
-      { title: "Genesis", url: "#" },
-      { title: "Explorer", url: "#" },
-      { title: "Quantum", url: "#" },
-    ],
-  },
-  {
-    title: "Documentation",
-    url: "/admin",
+    title: "Courses",
+    url: "/courses",
     icon: BookOpen,
     children: [
-      { title: "Introduction", url: "#", icon: BookOpen },
-      { title: "Get Started", url: "#" },
-      { title: "Tutorials", url: "#" },
-      { title: "Changelog", url: "#" },
+      { title: "All Courses", url: "/courses" },
+      { title: "Categories", url: "/courses/categories" },
+      { title: "Create Course", url: "/courses/create" },
+    ],
+  },
+  {
+    title: "Assignments",
+    url: "/assignments",
+    icon: ClipboardList,
+    children: [
+      { title: "Review Assignments", url: "/assignments/review" },
+      { title: "Submissions", url: "/assignments/submissions" },
+    ],
+  },
+  {
+    title: "Grades",
+    url: "/grades",
+    icon: GraduationCap,
+  },
+  {
+    title: "Reports",
+    url: "/reports",
+    icon: BarChart3,
+    children: [
+      { title: "Student Progress", url: "/reports/students" },
+      { title: "Course Analytics", url: "/reports/courses" },
     ],
   },
   {
     title: "Settings",
-    url: "/#",
+    url: "/settings",
     icon: Settings2,
   },
 ];
-
-const itemStyle = "h-11 px-2 rounded-full w-full transition-all duration-300";
 
 export function NavMain() {
   const pathname = usePathname();
   const { open } = useSidebar();
 
-  const isActive = (url: string) => url !== "#" && pathname.startsWith(url);
+  const isActive = (url: string) => {
+    if (url === "/") return pathname === "/";
+    return pathname.startsWith(url);
+  };
 
   return (
     <SidebarGroup className="p-1">
@@ -99,7 +120,7 @@ export function NavMain() {
                   className={cn(
                     "flex items-center rounded-full transition-all duration-300 group",
                     active
-                      ? "bg-primary hover:bg-primary/90"
+                      ? "bg-primary text-primary-foreground hover:bg-primary/90"
                       : "hover:bg-secondary",
                     open ? "px-2 h-11" : "px-0 justify-center",
                   )}
@@ -121,22 +142,23 @@ export function NavMain() {
                       <item.icon className="size-5 shrink-0" />
 
                       {open && (
-                        <span className="font-semibold">{item.title}</span>
+                        <span className="font-normal">{item.title}</span>
                       )}
                     </Link>
                   </SidebarMenuButton>
 
                   {open && (
                     <DropdownMenu>
-                      <DropdownMenuTrigger className="min-w-9 h-9 flex items-center justify-center rounded-full hover:bg-secondary">
-                        <ChevronRight
-                          className={cn(
-                            "size-4",
-                            active
-                              ? "text-foreground"
-                              : "text-muted-foreground",
-                          )}
-                        />
+                      <DropdownMenuTrigger
+                        className={cn(
+                          "flex min-w-9 h-9 items-center justify-center rounded-full transition-colors",
+                          "hover:bg-secondary",
+                          active
+                            ? "text-primary-foreground hover:text-primary dark:hover:text-primary-foreground"
+                            : "text-muted-foreground",
+                        )}
+                      >
+                        <ChevronRight className="size-4" />
                       </DropdownMenuTrigger>
 
                       <DropdownMenuContent side="right" align="start">
@@ -147,7 +169,18 @@ export function NavMain() {
                               className="flex items-center gap-2 w-full"
                             >
                               {child.icon && <child.icon />}
-                              <span>{child.title}</span>
+                              <span
+                                className={cn(
+                                  "flex w-full justify-between items-center",
+                                  isActive(child.url) && "text-primary",
+                                )}
+                              >
+                                {child.title}{" "}
+                                <span
+                                  hidden={!isActive(child.url)}
+                                  className="shrink-0 size-1.5 bg-primary rounded-full"
+                                />
+                              </span>
                             </Link>
                           </DropdownMenuItem>
                         ))}
@@ -159,9 +192,9 @@ export function NavMain() {
                 <SidebarMenuButton
                   tooltip={item.title}
                   className={cn(
-                    itemStyle,
+                    "h-11 px-2 rounded-full w-full transition-all duration-300",
                     active
-                      ? "bg-primary hover:bg-primary/90"
+                      ? "bg-primary text-primary-foreground hover:bg-primary/90"
                       : "hover:bg-secondary",
                   )}
                 >

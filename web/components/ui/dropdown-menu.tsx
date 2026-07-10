@@ -112,23 +112,29 @@ function DropdownMenuItem({
       data-variant={variant}
       className={cn(
         "group relative flex items-center gap-3",
-        "cursor-pointer",
-        "rounded-xl",
-        "px-3 py-2.5",
-        "text-sm font-medium",
+        "cursor-pointer rounded-xl px-3 py-2.5",
+        "text-sm font-medium transition-all duration-200",
+
+        // Default
         "text-muted-foreground",
-        "transition-all duration-200",
-        "hover:bg-primary/10",
-        "hover:text-primary",
-        "focus:bg-primary/10",
-        "focus:text-primary",
+        "hover:bg-primary/10 hover:text-primary",
+        "focus:bg-primary/10 focus:text-primary",
+        "hover:[&_svg]:text-primary",
+
+        // Destructive
+        "data-[variant=destructive]:text-destructive",
+        "data-[variant=destructive]:hover:bg-destructive/10",
+        "data-[variant=destructive]:hover:text-destructive",
+        "data-[variant=destructive]:focus:bg-destructive/10",
+        "data-[variant=destructive]:focus:text-destructive",
+        "data-[variant=destructive]:[&_svg]:text-destructive",
+        "data-[variant=destructive]:hover:[&_svg]:text-destructive",
+
         "data-inset:pl-8",
         "data-disabled:pointer-events-none",
         "data-disabled:opacity-40",
         "[&_svg]:size-4",
         "[&_svg]:shrink-0",
-        "[&_svg]:text-muted-foreground",
-        "hover:[&_svg]:text-primary",
         className,
       )}
       {...props}

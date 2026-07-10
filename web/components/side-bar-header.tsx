@@ -15,7 +15,7 @@ export function SideBarHeader() {
     >
       <div
         className={cn(
-          "flex size-10 shrink-0 items-center justify-center rounded-full bg-purple-600 font-bold transition-transform duration-300",
+          "flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold transition-transform duration-300",
           open ? "scale-100" : "scale-75",
         )}
       >
