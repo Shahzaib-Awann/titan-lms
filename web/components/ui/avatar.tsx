@@ -3,7 +3,7 @@
 import * as React from "react"
 import { Avatar as AvatarPrimitive } from "@base-ui/react/avatar"
 
-import { cn } from "@/lib/utils"
+import { cn, getAvatarInitials } from "@/lib/utils"
 
 function Avatar({
   className,
@@ -38,10 +38,16 @@ function AvatarImage({ className, ...props }: AvatarPrimitive.Image.Props) {
   )
 }
 
+type AvatarFallbackProps = AvatarPrimitive.Fallback.Props & {
+  initial?: string | null;
+};
+
 function AvatarFallback({
   className,
+  children,
+  initial,
   ...props
-}: AvatarPrimitive.Fallback.Props) {
+}: AvatarFallbackProps) {
   return (
     <AvatarPrimitive.Fallback
       data-slot="avatar-fallback"
@@ -50,7 +56,9 @@ function AvatarFallback({
         className
       )}
       {...props}
-    />
+    >
+      {children ?? getAvatarInitials(initial)}
+    </AvatarPrimitive.Fallback>
   )
 }
 

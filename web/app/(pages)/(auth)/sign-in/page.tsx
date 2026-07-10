@@ -4,7 +4,6 @@ import Image from "next/image";
 import SignInForm from "@/components/pages/sign-in/sign-in-form";
 
 export default function SignInPage() {
-
   return (
     <div className="min-h-screen flex w-full p-0 ">
       {/* Form Section */}
