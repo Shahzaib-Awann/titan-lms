@@ -37,9 +37,6 @@ const UserAccountMenu = ({
           <p className="text-sm font-medium group-hover:text-primary-foreground transition-all duration-200 capitalize">
             {user.name}
           </p>
-          <span className="text-xs text-muted-foreground capitalize group-hover:text-primary-foreground transition-all duration-200">
-            {user.role}
-          </span>
         </div>
       </DropdownMenuTrigger>
 
