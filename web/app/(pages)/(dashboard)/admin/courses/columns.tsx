@@ -2,6 +2,8 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { MoreHorizontal } from "lucide-react";
+
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,19 +13,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Checkbox } from "@/components/ui/checkbox";
+
 import { DataTableColumnHeader } from "@/components/ui/data-table/data-table-column-header";
 
-// This type is used to define the shape of our data.
-// You can use a Zod schema here if you want.
-export type Payment = {
+export interface Course {
   id: string;
-  amount: number;
-  status: "pending" | "processing" | "success" | "failed";
-  email: string;
-};
+  title: string;
+  instructor: string;
+  students: number;
+  lessons: number;
+  status: "published" | "draft" | "archived";
+  createdAt: string;
+}
 
-export const columns: ColumnDef<Payment>[] = [
+export const columns: ColumnDef<Course>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -34,7 +37,6 @@ export const columns: ColumnDef<Payment>[] = [
         aria-label="Select all"
       />
     ),
-
     cell: ({ row }) => (
       <Checkbox
         label=""
@@ -43,59 +45,114 @@ export const columns: ColumnDef<Payment>[] = [
         aria-label="Select row"
       />
     ),
-
     enableSorting: false,
     enableHiding: false,
   },
+
   {
-    accessorKey: "status",
-    header: "Status",
-  },
-  {
-    accessorKey: "email",
+    accessorKey: "title",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Email" />
+      <DataTableColumnHeader column={column} title="Course" />
+    ),
+    cell: ({ row }) => (
+      <div className="font-medium">{row.getValue("title")}</div>
     ),
   },
-  {
-    accessorKey: "amount",
-    header: () => <div className="text-right">Amount</div>,
-    cell: ({ row }) => {
-      const amount = parseFloat(row.getValue("amount"));
-      const formatted = new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
-      }).format(amount);
 
-      return <div className="text-right font-medium">{formatted}</div>;
+  {
+    accessorKey: "instructor",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Instructor" />
+    ),
+  },
+
+  {
+    accessorKey: "students",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Students" />
+    ),
+    cell: ({ row }) => (
+      <div className="text-center">{row.getValue("students")}</div>
+    ),
+  },
+
+  {
+    accessorKey: "lessons",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Lessons" />
+    ),
+    cell: ({ row }) => (
+      <div className="text-center">{row.getValue("lessons")}</div>
+    ),
+  },
+
+  {
+    accessorKey: "status",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Status" />
+    ),
+    cell: ({ row }) => {
+      const status = row.getValue("status") as Course["status"];
+
+      return (
+        <span
+          className={
+            status === "published"
+              ? "text-green-600"
+              : status === "draft"
+                ? "text-yellow-600"
+                : "text-muted-foreground"
+          }
+        >
+          {status}
+        </span>
+      );
     },
   },
+
+  {
+    accessorKey: "createdAt",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Created" />
+    ),
+    cell: ({ row }) =>
+      new Intl.DateTimeFormat("en-US", {
+        dateStyle: "medium",
+      }).format(new Date(row.getValue("createdAt"))),
+  },
+
   {
     id: "actions",
     cell: ({ row }) => {
-      const payment = row.original;
+      const course = row.original;
 
       return (
         <DropdownMenu>
           <DropdownMenuTrigger className="h-8 w-8 p-0">
             <span className="sr-only">Open menu</span>
-            <MoreHorizontal className="h-4 w-4" />
+            <MoreHorizontal className="size-4" />
           </DropdownMenuTrigger>
+
           <DropdownMenuContent align="end">
             <DropdownMenuGroup>
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
 
               <DropdownMenuItem
-                onClick={() => navigator.clipboard.writeText(payment.id)}
+                onClick={() => navigator.clipboard.writeText(course.id)}
               >
-                Copy payment ID
+                Copy course ID
               </DropdownMenuItem>
+
+              <DropdownMenuItem>View course</DropdownMenuItem>
+
+              <DropdownMenuItem>Edit course</DropdownMenuItem>
             </DropdownMenuGroup>
 
             <DropdownMenuSeparator />
 
-            <DropdownMenuItem>View customer</DropdownMenuItem>
-            <DropdownMenuItem>View payment details</DropdownMenuItem>
+            <DropdownMenuItem className="text-destructive">
+              Delete course
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       );

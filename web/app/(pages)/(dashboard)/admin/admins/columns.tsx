@@ -26,8 +26,6 @@ export interface Admin {
 
   role: "super_admin" | "admin" | "moderator";
 
-  permissions: number;
-
   status: "active" | "inactive" | "pending";
 
   lastLoginAt?: string;
@@ -85,16 +83,6 @@ export const columns: ColumnDef<Admin>[] = [
 
       return <span className="capitalize">{role.replace("_", " ")}</span>;
     },
-  },
-
-  {
-    accessorKey: "permissions",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Permissions" />
-    ),
-    cell: ({ row }) => (
-      <div className="text-center">{row.getValue("permissions")}</div>
-    ),
   },
 
   {

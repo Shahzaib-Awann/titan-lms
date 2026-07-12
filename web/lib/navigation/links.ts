@@ -17,6 +17,9 @@ import {
   PenSquare,
   Clock,
   Bookmark,
+  UserPlus,
+  PlusCircle,
+  CalendarCheck,
 } from "lucide-react";
 import { NavItem } from "./types";
 
@@ -31,34 +34,34 @@ export const adminNav: NavItem[] = [
   },
   {
     title: "Students",
-    url: "/users/students",
+    url: "/students",
     icon: Users,
     children: [
       {
         title: "Create Student",
-        url: "/users/students/create",
+        url: "/students/create",
       },
     ],
   },
   {
     title: "Trainers",
-    url: "/users/trainers",
+    url: "/trainers",
     icon: Users,
     children: [
       {
         title: "Create Trainers",
-        url: "/users/trainers/create",
+        url: "/trainers/create",
       },
     ],
   },
   {
     title: "Admins",
-    url: "/users/admins",
+    url: "/admins",
     icon: Users,
     children: [
       {
         title: "Create Admin",
-        url: "/users/admins/create",
+        url: "/admins/create",
       },
     ],
   },
@@ -333,3 +336,12 @@ const navConfig: Record<Role, NavItem[]> = {
 
 export const getNavByRole = (role?: string): NavItem[] =>
   navConfig[role?.toLowerCase() as Role] ?? [];
+
+export const quickActionsForAdmin = [
+  { label: "Add User", icon: UserPlus, url: "/users/create" },
+  { label: "Create Course", icon: PlusCircle, url: "/courses/create" },
+  { label: "Approve Leaves", icon: CalendarCheck, url: "/attendance/approve-leaves" },
+  { label: "Manage Instructors", icon: UserCog, url: "/users/trainers" },
+  { label: "View Reports", icon: FileText, url: "/reports" },
+  { label: "Settings", icon: Settings, url: "/settings" },
+];

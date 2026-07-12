@@ -46,7 +46,16 @@ export default async function DemoPage() {
 
   return (
     <div className="container mx-auto py-10">
-      <DataTable columns={columns} data={data} enableSearchBar />
+      <DataTable
+        columns={columns}
+        data={data}
+        globalFilterColumns={["name", "email", "expertise"]}
+        createButton={{
+          icon: true,
+          label: "Add",
+          href: "/trainers/create",
+        }}
+      />
     </div>
   );
 }
