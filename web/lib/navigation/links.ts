@@ -82,16 +82,16 @@ export const adminNav: NavItem[] = [
   },
   {
     title: "Attendance",
-    url: "/attendance",
+    url: "#",
     icon: BookOpen,
     children: [
       {
-        title: "Mark Student Attendance",
-        url: "/attendance/mark-student",
+        title: "Student Attendance",
+        url: "/attendance/students",
       },
       {
-        title: "Mark Trainer Attendance",
-        url: "/attendance/mark-trainer",
+        title: "Trainer Attendance",
+        url: "/attendance/trainers",
       },
     ],
   },
