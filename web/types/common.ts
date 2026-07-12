@@ -6,3 +6,5 @@ export interface PaginationQuery {
   sortBy?: string;
   sortOrder?: "asc" | "desc";
 }
+
+export type Role = "admin" | "trainer" | "student";

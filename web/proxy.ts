@@ -14,7 +14,7 @@ export function proxy(request: NextRequest) {
   const subdomain = currentHost.split('.')[0];
 
   // Define LMS subdomains
-  const allowedSubdomains = ['admin', 'teacher', 'student'];
+  const allowedSubdomains = ['admin', 'trainer', 'student'];
 
   // If the subdomain is one of our roles, rewrite the URL internally
   if (allowedSubdomains.includes(subdomain)) {
