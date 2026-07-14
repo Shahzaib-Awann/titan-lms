@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { DataTable } from "@/components/ui/data-table/data-table";
-import { Attendance, columns } from "./columns";
+import { TrainerAttendance, columns } from "./columns";
 import {
   Select,
   SelectContent,
@@ -30,72 +30,64 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
-export default function StudentAttendence() {
-  const [batch, setBatch] = useState("all");
+export default function TrainerAttendancePage() {
+  const [expertise, setExpertise] = useState("all");
   const [selectedDate, setSelectedDate] = useState("");
 
-  const data: Attendance[] = [
+  const data: TrainerAttendance[] = [
     {
       id: 1,
-      student_id: "AI-12345",
-      student_name: "Shahzaib Awan",
-      last_marked: "8:00 AM",
-      batch: "AI & DS",
+      trainer_id: "TR-1001",
+      trainer_name: "Ahmed Raza",
+      expertise: "AI & DS",
+      last_marked: "8:30 AM",
       status: "present",
     },
     {
       id: 2,
-      student_id: "2023-CS-043",
-      student_name: "Ayesha Khan",
+      trainer_id: "TR-1002",
+      trainer_name: "Sara Khan",
+      expertise: "Web Development",
       last_marked: "9:00 AM",
-      batch: "AI & DS",
       status: "present",
     },
     {
       id: 3,
-      student_id: "2023-CS-044",
-      student_name: "Ali Raza",
+      trainer_id: "TR-1003",
+      trainer_name: "Usman Ali",
+      expertise: "Cyber Security",
       last_marked: "10:00 AM",
-      batch: "Web Development",
       status: "leave",
     },
     {
       id: 4,
-      student_id: "2023-CS-045",
-      student_name: "Fatima Noor",
+      trainer_id: "TR-1004",
+      trainer_name: "Hina Malik",
+      expertise: "AI & DS",
       last_marked: "11:00 AM",
-      batch: "AI & DS",
-      status: "present",
-    },
-    {
-      id: 5,
-      student_id: "2023-CS-046",
-      student_name: "Hassan Ahmed",
-      last_marked: "12:00 AM",
-      batch: "Cyber Security",
       status: "absent",
     },
   ];
 
-  const filteredData = data.filter((student) => {
-    return batch === "all" || student.batch === batch;
+  const filteredData = data.filter((trainer) => {
+    return expertise === "all" || trainer.expertise === expertise;
   });
 
   return (
     <div className="container mx-auto py-10 space-y-5">
       {/* Filters */}
       <div className="flex gap-4 items-center">
-        {/* Batch Filter */}
+        {/* expertise Filter */}
         <Select
-          value={batch}
+          value={expertise}
           onValueChange={(value) => {
             if (value) {
-              setBatch(value);
+              setExpertise(value);
             }
           }}
         >
           <SelectTrigger className="w-50" onClick={(e) => e.stopPropagation()}>
-            <SelectValue placeholder="Select Batch" />
+            <SelectValue placeholder="Select expertise" />
           </SelectTrigger>
 
           <SelectContent>
@@ -148,8 +140,13 @@ export default function StudentAttendence() {
       <DataTable
         columns={columns}
         data={filteredData}
-        globalFilterColumns={["student_id", "student_name", "batch", "status"]}
-        renderSelectedActions={(students) => (
+        globalFilterColumns={[
+          "trainer_id",
+          "trainer_name",
+          "expertise",
+          "status",
+        ]}
+        renderSelectedActions={(trainers) => (
           <DropdownMenu>
             <DropdownMenuTrigger render={<Button />}>
               Mark Attendance <ChevronDown />
@@ -158,14 +155,14 @@ export default function StudentAttendence() {
             <DropdownMenuContent align="end">
               <DropdownMenuGroup>
                 <DropdownMenuLabel>
-                  Actions ({students.length} selected)
+                  Actions ({trainers.length} selected)
                 </DropdownMenuLabel>
 
                 <DropdownMenuSeparator />
 
                 <DropdownMenuItem
                   onClick={() => {
-                    console.log("Mark Present:", students);
+                    console.log("Mark Present:", trainers);
                   }}
                 >
                   Mark Present
@@ -173,16 +170,16 @@ export default function StudentAttendence() {
 
                 <DropdownMenuItem
                   onClick={() => {
-                    console.log("Mark Late:", students);
+                    console.log("Mark Late:", trainers);
                   }}
                 >
                   Mark Late
                 </DropdownMenuItem>
 
                 <DropdownMenuItem
-                  variant="destructive"
+                  className="text-destructive"
                   onClick={() => {
-                    console.log("Mark Absent:", students);
+                    console.log("Mark Absent:", trainers);
                   }}
                 >
                   Mark Absent

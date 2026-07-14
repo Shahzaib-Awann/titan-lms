@@ -41,6 +41,10 @@ export const adminNav: NavItem[] = [
         title: "Create Student",
         url: "/students/create",
       },
+      {
+        title: "Student Attendance",
+        url: "/attendance/students",
+      },
     ],
   },
   {
@@ -51,6 +55,10 @@ export const adminNav: NavItem[] = [
       {
         title: "Create Trainers",
         url: "/trainers/create",
+      },
+      {
+        title: "Trainer Attendance",
+        url: "/attendance/trainers",
       },
     ],
   },
@@ -77,21 +85,6 @@ export const adminNav: NavItem[] = [
       {
         title: "Enrollments",
         url: "/courses/enrollments",
-      },
-    ],
-  },
-  {
-    title: "Attendance",
-    url: "#",
-    icon: BookOpen,
-    children: [
-      {
-        title: "Student Attendance",
-        url: "/attendance/students",
-      },
-      {
-        title: "Trainer Attendance",
-        url: "/attendance/trainers",
       },
     ],
   },

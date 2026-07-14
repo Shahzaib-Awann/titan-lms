@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { ReactNode, useState } from "react";
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -29,17 +29,21 @@ import { DataTableViewOptions } from "./data-table-view-options";
 import { Button } from "../button";
 import { Plus } from "lucide-react";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   disableSearchBar?: boolean;
+  enableViewOptions?: boolean;
   globalFilterColumns?: string[];
   createButton?: {
     icon?: boolean;
     label: string;
     href: string;
   };
+  className?: string;
+  renderSelectedActions?: (rows: TData[]) => ReactNode;
 }
 
 export function DataTable<TData, TValue>({
@@ -48,6 +52,9 @@ export function DataTable<TData, TValue>({
   disableSearchBar = false,
   globalFilterColumns = [],
   createButton,
+  enableViewOptions = true,
+  className,
+  renderSelectedActions,
 }: DataTableProps<TData, TValue>) {
   const [globalFilter, setGlobalFilter] = useState("");
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -93,6 +100,10 @@ export function DataTable<TData, TValue>({
     onRowSelectionChange: setRowSelection,
   });
 
+  const selectedRows = table
+    .getSelectedRowModel()
+    .rows.map((row) => row.original);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -106,7 +117,11 @@ export function DataTable<TData, TValue>({
         )}
 
         <div className="ml-auto flex flex-row gap-2">
-          <DataTableViewOptions table={table} />
+          {selectedRows.length > 0 &&
+            renderSelectedActions &&
+            renderSelectedActions(selectedRows)}
+
+          {enableViewOptions && <DataTableViewOptions table={table} />}
 
           {createButton && (
             <Link href={createButton.href}>
@@ -119,7 +134,12 @@ export function DataTable<TData, TValue>({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-border bg-card">
+      <div
+        className={cn(
+          "overflow-hidden rounded-lg border border-border bg-card",
+          className,
+        )}
+      >
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (

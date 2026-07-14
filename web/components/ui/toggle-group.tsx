@@ -20,7 +20,7 @@ const ToggleGroupContext = React.createContext<
   orientation: "horizontal",
 });
 
-function ToggleGroup({
+export function ToggleGroup({
   className,
   variant,
   size,
@@ -40,28 +40,32 @@ function ToggleGroup({
       data-size={size}
       data-spacing={spacing}
       data-orientation={orientation}
-      style={{ "--gap": spacing } as React.CSSProperties}
+      style={
+        {
+          "--gap": spacing,
+        } as React.CSSProperties
+      }
       className={cn(
-        `
-        group/toggle-group
-        flex w-fit
-        items-center
-        rounded-xl
-        border border-border
-        bg-surface-1
-        p-1
-        shadow-card
-        transition-all
-        duration-250
-        ease-in-out
+        [
+          "group/toggle-group flex w-fit items-center",
 
-        data-vertical:flex-col
-        data-vertical:items-stretch
+          // Surface
+          "rounded-xl",
+          "border border-input",
+          "bg-card",
 
-        hover:shadow-elevated
+          // Spacing
+          "p-1",
+          "gap-[--spacing(var(--gap))]",
 
-        data-[size=sm]:rounded-lg
-        `,
+          // Shadow
+          "shadow-sm shadow-black/5",
+
+          // Orientation
+          "data-[orientation=vertical]:flex-col",
+          "data-[orientation=vertical]:items-stretch",
+          "data-[orientation=vertical]:w-auto",
+        ].join(" "),
         className,
       )}
       {...props}
@@ -80,7 +84,7 @@ function ToggleGroup({
   );
 }
 
-function ToggleGroupItem({
+export function ToggleGroupItem({
   className,
   children,
   variant = "default",
@@ -96,59 +100,37 @@ function ToggleGroupItem({
       data-size={context.size || size}
       data-spacing={context.spacing}
       className={cn(
-        `
-        relative
-        shrink-0
-        rounded-lg
-
-        px-4
-        py-2
-
-        text-sm
-        font-medium
-
-        text-muted-foreground
-
-        transition-all
-        duration-250
-        ease-in-out
-
-        hover:bg-surface-3
-        hover:text-foreground
-
-        focus-visible:z-10
-        focus-visible:outline-none
-        focus-visible:ring-2
-        focus-visible:ring-ring
-        focus-visible:ring-offset-2
-        focus-visible:ring-offset-background
-
-        data-[state=on]:
-          bg-blurple
-          text-white
-          shadow-card
-
-        data-[state=on]:hover:bg-blurple-hover
-
-        group-data-[spacing=0]/toggle-group:
-          rounded-none
-
-        group-data-horizontal/toggle-group:
-          first:rounded-l-lg
-
-        group-data-horizontal/toggle-group:
-          last:rounded-r-lg
-
-        group-data-vertical/toggle-group:
-          first:rounded-t-lg
-
-        group-data-vertical/toggle-group:
-          last:rounded-b-lg
-        `,
         toggleVariants({
           variant: context.variant || variant,
           size: context.size || size,
         }),
+
+        [
+          "relative shrink-0",
+          "rounded-lg",
+
+          "transition-all duration-250",
+          "ease-in-out",
+
+          "focus-visible:z-10",
+
+          // Active state
+          "aria-pressed:bg-primary",
+          "aria-pressed:text-primary-foreground",
+          "aria-pressed:shadow-card",
+
+          // Connected items
+          "group-data-[spacing=0]/toggle-group:rounded-none",
+
+          // Horizontal
+          "group-data-[orientation=horizontal]/toggle-group:first:rounded-l-lg",
+          "group-data-[orientation=horizontal]/toggle-group:last:rounded-r-lg",
+
+          // Vertical
+          "group-data-[orientation=vertical]/toggle-group:first:rounded-t-lg",
+          "group-data-[orientation=vertical]/toggle-group:last:rounded-b-lg",
+        ].join(" "),
+
         className,
       )}
       {...props}
@@ -157,5 +139,3 @@ function ToggleGroupItem({
     </TogglePrimitive>
   );
 }
-
-export { ToggleGroup, ToggleGroupItem };
