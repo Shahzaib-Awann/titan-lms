@@ -38,7 +38,7 @@ export const adminNav: NavItem[] = [
 
   {
     title: "User Management",
-    url: "/admin/users",
+    url: "#",
     icon: Users,
     children: [
       {
@@ -53,17 +53,6 @@ export const adminNav: NavItem[] = [
       },
 
       {
-        title: "Administration",
-        url: "/admin/admins",
-        children: [
-          {
-            title: "Create Admin",
-            url: "/admin/admins/create",
-          },
-        ]
-      },
-
-      {
         title: "Trainers",
         url: "/admin/trainers",
         children: [
@@ -73,6 +62,17 @@ export const adminNav: NavItem[] = [
           },
         ]
       },
+
+       {
+        title: "Administration",
+        url: "/admin/admins",
+        children: [
+          {
+            title: "Create Admin",
+            url: "/admin/admins/create",
+          },
+        ]
+      }
     ],
   },
   {

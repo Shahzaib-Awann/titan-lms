@@ -37,7 +37,7 @@ export default async function DemoPage() {
         createButton={{
           icon: true,
           label: "Add",
-          href: "/students/create",
+          href: "/admin/students/create",
         }}
       />
     </div>

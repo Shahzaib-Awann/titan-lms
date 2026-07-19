@@ -116,7 +116,7 @@ export default function StudentAttendence() {
               <Button
                 variant="outline"
                 className={cn(
-                  "w-50 justify-start text-left font-normal",
+                  "w-50 justify-start bg-card text-left font-normal",
                   !selectedDate && "text-muted-foreground",
                 )}
               />

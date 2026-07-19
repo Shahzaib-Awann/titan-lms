@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Suspense } from "react";
 import { Header } from "../../../../../components/pages/admin/announcements/header";
 import { FiltersSidebar } from "../../../../../components/pages/admin/announcements/filters-sidebar";
 import { DataTable } from "@/components/ui/data-table/data-table";
@@ -46,7 +46,9 @@ const AnnouncementsPage = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6">
         <div className="lg:col-span-3">
-          <FiltersSidebar />
+          <Suspense fallback={<div>Loading filters...</div>}>
+            <FiltersSidebar />
+          </Suspense>
         </div>
         <div className="lg:col-span-9">
           <DataTable
