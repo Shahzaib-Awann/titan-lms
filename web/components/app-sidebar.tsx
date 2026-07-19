@@ -19,7 +19,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SideBarHeader />
       </SidebarHeader>
       <SidebarContent className="px-1 py-1">
-        <NavMain />
+        <NavMain role={"admin"} />
       </SidebarContent>
       <SidebarFooter>
         <p>Footer</p>

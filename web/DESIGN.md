@@ -6,30 +6,30 @@ description: "A premium Learning Management System designed around deep navy sur
 colors:
   primary: "#7658FF"
   on-primary: "#FFFFFF"
-  primary-hover: "#6848F8"
+  primary-hover: "#6548F8"
 
   secondary: "#4ADE80"
   warning: "#FBBF24"
   danger: "#FB7185"
 
   heading: "#F5F7FF"
-  body: "#C8CEE6"
-  muted: "#8F97B6"
+  body: "#F5F7FF"
+  muted: "#98A0BD"
 
-  canvas: "#0F1322"
-  surface-1: "#171C2D"
-  surface-2: "#1F2438"
+  canvas: "#0B1020"
+  surface-1: "#151B2D"
+  surface-2: "#171F33"
   surface-3: "#262D45"
 
-  border: "#2D3552"
+  border: "#2A3148"
 
-  success: "#4ADE80"
-  info: "#60A5FA"
-  warning-soft: "#F59E0B"
-  error: "#F87171"
+  success: "#23A55A"
+  info: "#7658FF"
+  warning-soft: "#F0B232"
+  error: "#F23F43"
 
-  gradient-start: "#5B4CF6"
-  gradient-middle: "#6F5BFF"
+  gradient-start: "#6548F8"
+  gradient-middle: "#7658FF"
   gradient-end: "#9268FF"
 
 typography:
