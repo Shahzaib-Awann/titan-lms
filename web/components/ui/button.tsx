@@ -6,23 +6,23 @@ import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
   [
-  "group/button inline-flex shrink-0 items-center justify-center",
-  "font-medium whitespace-nowrap",
-  "rounded-xl",
-  "transition-all duration-200 ease-out",
-  "outline-none select-none",
-  "focus-visible:outline-none",
-  "focus-visible:ring-2",
-  "focus-visible:ring-primary",
-  "focus-visible:ring-offset-2",
-  "focus-visible:ring-offset-background",
-  "disabled:pointer-events-none",
-  "disabled:opacity-50",
-  "active:scale-[0.98]",
-  "[&_svg]:pointer-events-none",
-  "[&_svg]:shrink-0",
-  "[&_svg]:size-4",
-],
+    "group/button inline-flex shrink-0 items-center justify-center",
+    "font-medium whitespace-nowrap",
+    "rounded-xl",
+    "transition-all duration-200 ease-out",
+    "outline-none select-none",
+    "focus-visible:outline-none",
+    "focus-visible:ring-2",
+    "focus-visible:ring-primary",
+    "focus-visible:ring-offset-2",
+    "focus-visible:ring-offset-background",
+    "disabled:pointer-events-none",
+    "disabled:opacity-50",
+    "active:scale-[0.98]",
+    "[&_svg]:pointer-events-none",
+    "[&_svg]:shrink-0",
+    "[&_svg]:size-4",
+  ],
   {
     variants: {
       variant: {
@@ -90,12 +90,11 @@ const buttonVariants = cva(
       variant: "primary",
       size: "md",
     },
-  }
+  },
 );
 
 interface ButtonProps
-  extends ButtonPrimitive.Props,
-    VariantProps<typeof buttonVariants> {
+  extends ButtonPrimitive.Props, VariantProps<typeof buttonVariants> {
   isLoading?: boolean;
 }
 
@@ -116,14 +115,12 @@ function Button({
           variant,
           size,
           className,
-        })
+        }),
       )}
       disabled={disabled || isLoading}
       {...props}
     >
-      {isLoading && (
-        <Loader2 className="mr-2 size-4 animate-spin" />
-      )}
+      {isLoading && <Loader2 className="mr-2 size-4 animate-spin" />}
 
       {children}
     </ButtonPrimitive>
