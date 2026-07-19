@@ -46,7 +46,7 @@ export default async function CoursesPage() {
         createButton={{
           icon: true,
           label: "Add Course",
-          href: "/courses/create",
+          href: "/admin/courses/create",
         }}
       />
     </div>

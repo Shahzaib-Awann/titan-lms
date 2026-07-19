@@ -1,3 +1,4 @@
+"use client";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,13 +9,34 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { BadgeCheckIcon, BellIcon, LogOutIcon } from "lucide-react";
+import {
+  BadgeCheckIcon,
+  BellIcon,
+  Loader2Icon,
+  LogOutIcon,
+} from "lucide-react";
+import { useState } from "react";
+import { signOut } from "next-auth/react";
 
 const UserAccountMenu = ({
   user,
 }: {
   user: { name: string; role: string; avatar: string };
 }) => {
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    try {
+      setIsLoggingOut(true);
+      await signOut({ callbackUrl: "/" });
+      window.location.href = "/sign-in";
+    } catch (error) {
+      console.error("Logout failed: ", error);
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -76,7 +98,12 @@ const UserAccountMenu = ({
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem variant="destructive">
+        <DropdownMenuItem
+          onClick={handleLogout}
+          disabled={isLoggingOut}
+          variant="destructive"
+        >
+          {isLoggingOut && <Loader2Icon className="animate-spin" />}
           <LogOutIcon />
           Log out
         </DropdownMenuItem>

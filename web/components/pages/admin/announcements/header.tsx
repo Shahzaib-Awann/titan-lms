@@ -11,7 +11,7 @@ export const Header = () => {
           Manage global and targeted communications for your learning community.
         </p>
       </div>
-      <Link href="/announcements/create">
+      <Link href="/admin/announcements/create">
         <Button>
           <Megaphone className="mr-2 h-4 w-4" />
           New Announcement

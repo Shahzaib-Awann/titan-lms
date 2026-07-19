@@ -1,35 +1,93 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { auth } from "@/auth";
+import type { Role } from "./types/common";
 
-export function proxy(request: NextRequest) {
-  // const url = request.nextUrl.clone();
-  // const hostname = request.headers.get('host');
+/**
+ * Protected routes with required roles.
+ */
+const PROTECTED_ROUTES: Array<[string, Role]> = [
+  ["/admin", "admin"],
+  ["/student", "student"],
+  ["/trainer", "trainer"],
+];
 
-  // if (!hostname) return NextResponse.next();
+/**
+ * Default dashboard for each role.
+ */
+const ROLE_HOME: Record<Role, string> = {
+  admin: "/admin",
+  trainer: "/trainer",
+  student: "/student",
+};
 
-  // // Strip the port number for local development (e.g., admin.localhost:3000 -> admin.localhost)
-  // const currentHost = hostname.split(':')[0];
+/**
+ * Returns home route based on role.
+ */
+function getRoleHome(role?: Role) {
+  return role ? ROLE_HOME[role] : "/";
+}
 
-  // // Extract the subdomain
-  // const subdomain = currentHost.split('.')[0];
+/**
+ * Finds required role for a route.
+ */
+function getRequiredRole(pathname: string): Role | undefined {
+  return PROTECTED_ROUTES.find(([route]) =>
+    pathname.startsWith(route)
+  )?.[1];
+}
 
-  // // Define LMS subdomains
-  // const allowedSubdomains = ['admin', 'trainer', 'student'];
+/**
+ * Route access controller.
+ */
+export default async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
 
-  // // If the subdomain is one of our roles, rewrite the URL internally
-  // if (allowedSubdomains.includes(subdomain)) {
-  //   // Example: admin.example.com/dashboard becomes /admin/dashboard internally
-  //   url.pathname = `/${subdomain}${url.pathname}`;
-  //   return NextResponse.rewrite(url);
-  // }
+  const session = await auth();
+  const user = session?.user;
 
-  // If it's the main domain (example.com), just continue normally
+  const role = user?.role as Role | undefined;
+
+  // Redirect authenticated users away from sign-in page
+  if (pathname === "/sign-in" && role) {
+    return NextResponse.redirect(
+      new URL(getRoleHome(role), request.url)
+    );
+  }
+
+  const requiredRole = getRequiredRole(pathname);
+
+  // Public route
+  if (!requiredRole) {
+    return NextResponse.next();
+  }
+
+  // Redirect unauthenticated users
+  if (!user) {
+    const signInUrl = new URL("/sign-in", request.url);
+    signInUrl.searchParams.set("redirect_url", pathname);
+
+    return NextResponse.redirect(signInUrl);
+  }
+
+  // Prevent unauthorized role access
+  if (role !== requiredRole) {
+    return NextResponse.redirect(
+      new URL(getRoleHome(role), request.url)
+    );
+  }
+
   return NextResponse.next();
 }
 
-// Ensure the middleware runs on all routes EXCEPT API, static files, and images
+/**
+ * Proxy execution paths.
+ */
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    "/admin/:path*",
+    "/student/:path*",
+    "/trainer/:path*",
+    "/sign-in",
   ],
 };
