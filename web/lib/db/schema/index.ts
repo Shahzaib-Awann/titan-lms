@@ -10,7 +10,7 @@ import {
 } from "drizzle-orm/mysql-core";
 
 // Enums
-export const userRoleEnum = mysqlEnum("role", ["admin", "teacher", "student"]);
+export const userRoleEnum = mysqlEnum("role", ["admin", "trainer", "student"]);
 export const userStatusEnum = mysqlEnum("status", ["active", "inactive", "suspended"]);
 export const assetExtensionEnum = mysqlEnum("extension", ["pdf", "mp4", "png", "jpg", "jpeg", "md"]);
 
@@ -19,7 +19,7 @@ export const users = mysqlTable("users", {
   id: varchar("id", { length: 21 }).primaryKey(), // NanoID generates 21-character strings
 
   cnic: varchar("cnic", { length: 13 }).unique().notNull(),
-  password: varchar("password", { length: 30 }).notNull(),
+  password: varchar("password", { length: 255 }).notNull(),
 
   fullName: varchar("full_name", { length: 255 }).notNull(),
   phone: varchar("phone", { length: 20 }).notNull(),
@@ -33,8 +33,8 @@ export const users = mysqlTable("users", {
   deletedAt: timestamp("deleted_at"),
 });
 
-// Teacher Profiles
-export const teacherProfiles = mysqlTable("teacher_profiles", {
+// Trainer Profiles
+export const trainerProfiles = mysqlTable("trainer_profiles", {
   id: varchar("id", { length: 21 }).primaryKey(),
 
   userId: varchar("user_id", { length: 21 }).notNull().references(() => users.id),

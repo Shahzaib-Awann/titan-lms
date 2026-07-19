@@ -3,13 +3,19 @@ import { Sparkles } from "lucide-react";
 import Image from "next/image";
 import SignInForm from "@/components/pages/sign-in/sign-in-form";
 
-export default function SignInPage() {
+export default async function SignInPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ redirect_url?: string }>;
+}) {
+  const { redirect_url } = await searchParams;
+
   return (
     <div className="min-h-screen flex w-full p-0 ">
       {/* Form Section */}
       <div className="flex-1 flex flex-col justify-center px-4 sm:px-6 lg:flex-none lg:w-130 xl:w-150 mx-auto lg:mx-0">
         <div className="w-full max-w-sm mx-auto lg:w-96">
-          <SignInForm />
+          <SignInForm redirectUrl={redirect_url} />
         </div>
       </div>
 

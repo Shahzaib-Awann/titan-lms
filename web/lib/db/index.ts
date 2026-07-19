@@ -1,10 +1,10 @@
 import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
 import * as schema from "./schema";
-import * as dotenv from "dotenv";
 
-dotenv.config({ path: ".env" });
-
+/**
+ * Loads database connection environment variables.
+ */
 const {
   DB_USER,
   DB_PASSWORD,
@@ -13,12 +13,18 @@ const {
   DB_NAME,
 } = process.env;
 
+/**
+ * Validates required database configuration.
+ */
 if (!DB_USER || !DB_PASSWORD || !DB_HOST || !DB_PORT || !DB_NAME) {
   throw new Error(
     "Database configuration missing. Required variables: DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME"
   );
 }
 
+/**
+ * Configures MySQL connection pool settings.
+ */
 const poolConfig: mysql.PoolOptions = {
   host: DB_HOST,
   user: DB_USER,
@@ -37,12 +43,12 @@ const poolConfig: mysql.PoolOptions = {
 };
 
 /**
- * MySQL connection pool
+ * Creates MySQL connection pool.
  */
 export const pool = mysql.createPool(poolConfig);
 
 /**
- * Drizzle ORM instance
+ * Initializes Drizzle ORM database instance.
  */
 export const db = drizzle(pool, {
   schema,
