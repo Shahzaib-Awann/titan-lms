@@ -20,112 +20,211 @@ import {
   UserPlus,
   PlusCircle,
   CalendarCheck,
+  Layers,
+  GraduationCap,
+  ClipboardCheck,
 } from "lucide-react";
 import { NavItem } from "./types";
 
-/* ========================================
-   ADMIN NAVIGATION
-======================================== */
+
 export const adminNav: NavItem[] = [
+
   {
     title: "Dashboard",
-    url: "/",
+    url: "/admin",
     icon: LayoutDashboard,
   },
+
+
   {
-    title: "Students",
-    url: "/students",
+    title: "User Management",
+    url: "/admin/users",
     icon: Users,
     children: [
       {
-        title: "Create Student",
-        url: "/students/create",
+        title: "Students",
+        url: "/admin/students",
+        children: [
+          {
+            title: "Create Student",
+            url: "/admin/students/create",
+          },
+        ]
       },
+
       {
-        title: "Student Attendance",
-        url: "/attendance/students",
+        title: "Administration",
+        url: "/admin/admins",
+        children: [
+          {
+            title: "Create Admin",
+            url: "/admin/admins/create",
+          },
+        ]
       },
-    ],
-  },
-  {
-    title: "Trainers",
-    url: "/trainers",
-    icon: Users,
-    children: [
+
       {
-        title: "Create Trainers",
-        url: "/trainers/create",
-      },
-      {
-        title: "Trainer Attendance",
-        url: "/attendance/trainers",
-      },
-    ],
-  },
-  {
-    title: "Admins",
-    url: "/admins",
-    icon: Users,
-    children: [
-      {
-        title: "Create Admin",
-        url: "/admins/create",
+        title: "Trainers",
+        url: "/admin/trainers",
+        children: [
+          {
+            title: "Create Trainer",
+            url: "/admin/trainers/create",
+          },
+        ]
       },
     ],
   },
   {
     title: "Courses",
-    url: "/courses",
+    url: "/admin/courses",
     icon: BookOpen,
     children: [
       {
         title: "Create Course",
-        url: "/courses/create",
+        url: "/admin/courses/create",
       },
+
       {
-        title: "Enrollments",
-        url: "/courses/enrollments",
+        title: "Syllabus",
+        url: "/admin/courses/syllabus",
       },
+
+      {
+        title: "Topics",
+        url: "/admin/courses/topics",
+      },
+
     ],
   },
+
+
   {
-    title: "Certificates",
-    url: "/certificates",
-    icon: Award,
-  },
-  {
-    title: "Announcements",
-    url: "/announcements",
-    icon: Bell,
-  },
-  {
-    title: "Reports & Analytics",
-    url: "/reports",
-    icon: BarChart3,
+    title: "Batches",
+    url: "/admin/batches",
+    icon: Layers,
     children: [
       {
-        title: "Course Reports",
-        url: "/reports/courses",
+        title: "Create Batch",
+        url: "/admin/batches/create",
       },
+
       {
-        title: "Student Performance",
-        url: "/reports/students",
+        title: "Batch Schedule",
+        url: "/admin/batches/schedules",
       },
+
+    ],
+  },
+
+
+  {
+    title: "Enrollments",
+    url: "/admin/enrollments",
+    icon: UserPlus,
+    children: [
       {
-        title: "Teacher Performance",
-        url: "/reports/teachers",
+        title: "Active Enrollments",
+        url: "/admin/enrollments/active",
       },
+
       {
-        title: "Attendance Reports",
-        url: "/attendance/reports",
+        title: "Completed Enrollments",
+        url: "/admin/enrollments/completed",
+      },
+
+    ],
+  },
+
+
+  {
+    title: "Attendance",
+    url: "#",
+    icon: ClipboardCheck,
+    children: [
+
+      {
+        title: "Students Attendance",
+        url: "/admin/attendance/students",
+      },
+
+      {
+        title: "Trainers Attendance",
+        url: "/admin/attendance/trainers",
       },
     ],
   },
+
+
+  {
+    title: "Learning Management",
+    url: "/admin/learning",
+    icon: GraduationCap,
+    children: [
+
+      {
+        title: "Syllabus Topics",
+        url: "/admin/learning/topics",
+      },
+
+      {
+        title: "Sub Topics",
+        url: "/admin/learning/subtopics",
+      },
+
+      {
+        title: "Progress Tracking",
+        url: "/admin/learning/progress",
+      },
+
+    ],
+  },
+
+
+  {
+    title: "Assets",
+    url: "/admin/assets",
+    icon: FolderOpen,
+  },
+
+
+  {
+    title: "Reports",
+    url: "/admin/reports",
+    icon: BarChart3,
+    children: [
+
+      {
+        title: "Student Reports",
+        url: "/admin/reports/students",
+      },
+
+      {
+        title: "Trainers Reports",
+        url: "/admin/reports/trainers",
+      },
+
+      {
+        title: "Course Reports",
+        url: "/admin/reports/courses",
+      },
+
+    ],
+  },
+
+  {
+    title: "Announcements",
+    url: '/admin/announcements',
+    icon: Bell
+  },
+
+
   {
     title: "Settings",
-    url: "/settings",
+    url: "/admin/settings",
     icon: Settings,
   },
+
 ];
 
 /* ========================================
