@@ -1,4 +1,4 @@
-import { AdminForm } from "@/components/pages/forms/admin-form";
+import { AdminForm } from "@/components/forms/admin-form";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {

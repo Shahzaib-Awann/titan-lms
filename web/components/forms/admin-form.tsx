@@ -65,7 +65,6 @@ export function AdminForm({ data }: AdminFormProps) {
   });
 
   const {
-    register,
     handleSubmit,
     control,
     formState: { errors },
@@ -188,45 +187,69 @@ export function AdminForm({ data }: AdminFormProps) {
       <section>
         <h3 className="mb-5 text-base font-semibold">Personal Information</h3>
         <div className="grid gap-5 md:grid-cols-2">
-          <Field className="space-y-2" data-invalid={!!errors.fullName}>
-            <FieldLabel htmlFor="fullName" required>
-              Full Name
-            </FieldLabel>
-            <Input
-              {...register("fullName")}
-              id="fullName"
-              className="h-11 rounded-xl"
-              placeholder="John Doe"
-              aria-invalid={!!errors.fullName}
-            />
-            <FieldError errors={[errors.fullName]} />
-          </Field>
+          <Controller
+            name="fullName"
+            control={control}
+            render={({ field, fieldState: { error } }) => (
+              <Field className="space-y-2" data-invalid={!!error}>
+                <FieldLabel htmlFor="fullName" required>
+                  Full Name
+                </FieldLabel>
 
-          <Field className="space-y-2" data-invalid={!!errors.cnic}>
-            <FieldLabel htmlFor="cnic" required>
-              CNIC
-            </FieldLabel>
-            <Input
-              {...register("cnic")}
-              id="cnic"
-              className="h-11 rounded-xl"
-              placeholder="xxxxxxxxxxxxx"
-              aria-invalid={!!errors.cnic}
-            />
-            <FieldError errors={[errors.cnic]} />
-          </Field>
+                <Input
+                  {...field}
+                  id="fullName"
+                  className="h-11 rounded-xl"
+                  placeholder="John Doe"
+                  aria-invalid={!!error}
+                />
 
-          <Field className="space-y-2" data-invalid={!!errors.phone}>
-            <FieldLabel htmlFor="phone">Phone Number</FieldLabel>
-            <Input
-              {...register("phone")}
-              id="phone"
-              className="h-11 rounded-xl"
-              placeholder="+92 300 1234567"
-              aria-invalid={!!errors.phone}
-            />
-            <FieldError errors={[errors.phone]} />
-          </Field>
+                <FieldError errors={[error]} />
+              </Field>
+            )}
+          />
+
+          <Controller
+            name="cnic"
+            control={control}
+            render={({ field, fieldState: { error } }) => (
+              <Field className="space-y-2" data-invalid={!!error}>
+                <FieldLabel htmlFor="cnic" required>
+                  CNIC
+                </FieldLabel>
+
+                <Input
+                  {...field}
+                  id="cnic"
+                  className="h-11 rounded-xl"
+                  placeholder="xxxxxxxxxxxxx"
+                  aria-invalid={!!error}
+                />
+
+                <FieldError errors={[error]} />
+              </Field>
+            )}
+          />
+
+          <Controller
+            name="phone"
+            control={control}
+            render={({ field, fieldState: { error } }) => (
+              <Field className="space-y-2" data-invalid={!!error}>
+                <FieldLabel htmlFor="phone">Phone Number</FieldLabel>
+
+                <Input
+                  {...field}
+                  id="phone"
+                  className="h-11 rounded-xl"
+                  placeholder="+92 300 1234567"
+                  aria-invalid={!!error}
+                />
+
+                <FieldError errors={[error]} />
+              </Field>
+            )}
+          />
         </div>
       </section>
 
@@ -236,34 +259,46 @@ export function AdminForm({ data }: AdminFormProps) {
       <section>
         <h3 className="mb-5 text-base font-semibold">Security</h3>
         <Field className="space-y-2" data-invalid={!!errors.password}>
-          <FieldLabel htmlFor="password" required>
-            Password
-          </FieldLabel>
-          <div className="relative">
-            <input
-              type="password"
-              name="fake-password"
-              autoComplete="new-password"
-              className="hidden"
-            />
-            <Input
-              {...register("password")}
-              id="password"
-              type={showPassword ? "text" : "password"}
-              className="h-11 rounded-xl pr-10"
-              placeholder="Enter password"
-              aria-invalid={!!errors.password}
-              autoComplete="new-password"
-            />
-            <button
-              type="button"
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-              onClick={() => setShowPassword((v) => !v)}
-            >
-              {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
-            </button>
-          </div>
-          <FieldError errors={[errors.password]} />
+          <Controller
+            name="password"
+            control={control}
+            render={({ field, fieldState: { error } }) => (
+              <>
+                <FieldLabel htmlFor="password" required>
+                  Password
+                </FieldLabel>
+
+                <div className="relative">
+                  <input
+                    type="password"
+                    name="fake-password"
+                    autoComplete="new-password"
+                    className="hidden"
+                  />
+
+                  <Input
+                    {...field}
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    className="h-11 rounded-xl pr-10"
+                    placeholder="Enter password"
+                    autoComplete="new-password"
+                    aria-invalid={!!error}
+                  />
+
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                    onClick={() => setShowPassword((v) => !v)}
+                  >
+                    {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                  </button>
+                </div>
+
+                <FieldError errors={[error]} />
+              </>
+            )}
+          />
         </Field>
       </section>
 
@@ -281,19 +316,25 @@ export function AdminForm({ data }: AdminFormProps) {
           <Controller
             name="status"
             control={control}
-            render={({ field }) => (
-              <Field className="space-y-2">
+            render={({ field, fieldState: { error } }) => (
+              <Field className="space-y-2" data-invalid={!!error}>
                 <FieldLabel required>Status</FieldLabel>
+
                 <Select value={field.value} onValueChange={field.onChange}>
                   <SelectTrigger className="min-h-11 rounded-xl capitalize">
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
+
                   <SelectContent>
                     <SelectItem value="active">Active</SelectItem>
+
                     <SelectItem value="inactive">Inactive</SelectItem>
+
                     <SelectItem value="suspended">Suspended</SelectItem>
                   </SelectContent>
                 </Select>
+
+                <FieldError errors={[error]} />
               </Field>
             )}
           />

@@ -24,13 +24,83 @@ export const AdminFormSchema = z
     }),
 
     // Uploaded file or null
-    avatar: z.instanceof(File).nullable().optional(),
+    avatar: z
+      .instanceof(File)
+      .nullable()
+      .optional()
+      .refine(
+      (file) => !file || file.size <= 2 * 1024 * 1024,
+      "Image must be less than 2MB"
+    ),
   })
   .superRefine((data, ctx) => {
     if (!data.id && (!data.password || data.password.trim() === "")) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Password is required when creating a new user",
+        path: ["password"],
+      });
+    }
+  });
+
+  export const TrainerFormSchema = z
+  .object({
+    id: z.string().optional(),
+
+    fullName: z
+      .string()
+      .min(2, "Full Name must be at least 2 characters"),
+
+    phone: z
+      .string()
+      .optional()
+      .or(z.literal("")),
+
+    password: z
+      .string()
+      .max(30, "Password must be less than 30 characters")
+      .optional()
+      .or(z.literal("")),
+
+    employeeCode: z
+      .string()
+      .min(2, "Employee Code is required"),
+
+    specialization: z
+      .string()
+      .min(2, "Specialization must be at least 2 characters"),
+
+    hourlyRate: z
+      .string()
+      .min(1, "Hourly Rate is required")
+      .refine(
+        (value) => !isNaN(Number(value)) && Number(value) >= 0,
+        "Hourly Rate must be a valid positive number",
+      ),
+
+    joinedDate: z
+      .string()
+      .min(1, "Joined Date is required"),
+
+    status: z.enum(["active", "inactive", "suspended"], {
+      error: "Status is required",
+    }),
+
+    // Uploaded file or null
+    avatar: z
+      .instanceof(File)
+      .nullable()
+      .optional()
+      .refine(
+      (file) => !file || file.size <= 2 * 1024 * 1024,
+      "Image must be less than 2MB"
+    ),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.id && (!data.password || data.password.trim() === "")) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Password is required when creating a new trainer",
         path: ["password"],
       });
     }

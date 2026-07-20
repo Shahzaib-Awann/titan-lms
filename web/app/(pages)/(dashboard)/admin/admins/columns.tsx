@@ -3,10 +3,10 @@
 import { Checkbox } from "@/components/ui/checkbox";
 import { DataTableColumnHeader } from "@/components/ui/data-table/data-table-column-header";
 import { ColumnDef } from "@tanstack/react-table";
-import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { RowActions } from "./row-actions";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export interface Admin {
   id: string;
@@ -56,19 +56,13 @@ export const columns: ColumnDef<Admin>[] = [
 
       return (
         <div className="flex items-center gap-3">
-          {admin.avatarUrl ? (
-            <Image
-              src={admin.avatarUrl}
+          <Avatar className="h-9 w-9">
+            <AvatarImage
+              src={admin.avatarUrl ?? undefined}
               alt={admin.fullName}
-              width={36}
-              height={36}
-              className="rounded-full object-cover"
             />
-          ) : (
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-sm font-medium">
-              {admin.fullName.charAt(0)}
-            </div>
-          )}
+            <AvatarFallback initial={admin.fullName} />
+          </Avatar>
 
           <div className="font-medium">{admin.fullName}</div>
         </div>
