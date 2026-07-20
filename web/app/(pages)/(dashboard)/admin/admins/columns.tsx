@@ -1,36 +1,26 @@
 "use client";
 
-import { MoreHorizontal } from "lucide-react";
-
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { DataTableColumnHeader } from "@/components/ui/data-table/data-table-column-header";
 import { ColumnDef } from "@tanstack/react-table";
+import Image from "next/image";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import { RowActions } from "./row-actions";
 
 export interface Admin {
   id: string;
+  cnic: string;
+  fullName: string;
+  phone: string;
 
-  name: string;
-  email: string;
-  phone?: string;
+  avatarId: string | null;
+  avatarUrl: string | null;
 
-  avatar?: string;
+  role: "admin" | "trainer" | "student";
+  status: "active" | "inactive" | "suspended";
 
-  role: "super_admin" | "admin" | "moderator";
-
-  status: "active" | "inactive" | "pending";
-
-  lastLoginAt?: string;
-
-  joinedAt: string;
+  createdAt: Date;
 }
 
 export const columns: ColumnDef<Admin>[] = [
@@ -57,19 +47,46 @@ export const columns: ColumnDef<Admin>[] = [
   },
 
   {
-    accessorKey: "name",
+    accessorKey: "fullName",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Name" />
     ),
-    cell: ({ row }) => (
-      <div className="font-medium">{row.getValue("name")}</div>
+    cell: ({ row }) => {
+      const admin = row.original;
+
+      return (
+        <div className="flex items-center gap-3">
+          {admin.avatarUrl ? (
+            <Image
+              src={admin.avatarUrl}
+              alt={admin.fullName}
+              width={36}
+              height={36}
+              className="rounded-full object-cover"
+            />
+          ) : (
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-sm font-medium">
+              {admin.fullName.charAt(0)}
+            </div>
+          )}
+
+          <div className="font-medium">{admin.fullName}</div>
+        </div>
+      );
+    },
+  },
+
+  {
+    accessorKey: "cnic",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="CNIC" />
     ),
   },
 
   {
-    accessorKey: "email",
+    accessorKey: "phone",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Email" />
+      <DataTableColumnHeader column={column} title="Phone" />
     ),
   },
 
@@ -78,11 +95,9 @@ export const columns: ColumnDef<Admin>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Role" />
     ),
-    cell: ({ row }) => {
-      const role = row.getValue("role") as Admin["role"];
-
-      return <span className="capitalize">{role.replace("_", " ")}</span>;
-    },
+    cell: ({ row }) => (
+      <span className="capitalize">{row.getValue("role")}</span>
+    ),
   },
 
   {
@@ -94,30 +109,30 @@ export const columns: ColumnDef<Admin>[] = [
       const status = row.getValue("status") as Admin["status"];
 
       return (
-        <span
-          className={
+        <Badge
+          variant="secondary"
+          className={cn(
             status === "active"
               ? "text-green-600"
-              : status === "pending"
-                ? "text-yellow-600"
-                : "text-muted-foreground"
-          }
+              : status === "suspended"
+                ? "text-red-600"
+                : "text-muted-foreground",
+            "rounded-lg",
+          )}
         >
           {status}
-        </span>
+        </Badge>
       );
     },
   },
 
   {
-    accessorKey: "lastLoginAt",
+    accessorKey: "createdAt",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Last Login" />
+      <DataTableColumnHeader column={column} title="Created" />
     ),
     cell: ({ row }) => {
-      const date = row.getValue("lastLoginAt") as string | undefined;
-
-      if (!date) return "-";
+      const date = row.getValue("createdAt") as Date;
 
       return new Intl.DateTimeFormat("en-US", {
         dateStyle: "medium",
@@ -126,53 +141,9 @@ export const columns: ColumnDef<Admin>[] = [
   },
 
   {
-    accessorKey: "joinedAt",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Joined" />
-    ),
-    cell: ({ row }) =>
-      new Intl.DateTimeFormat("en-US", {
-        dateStyle: "medium",
-      }).format(new Date(row.getValue("joinedAt"))),
-  },
-
-  {
     id: "actions",
     cell: ({ row }) => {
-      const admin = row.original;
-
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger className="h-8 w-8 p-0">
-            <span className="sr-only">Open menu</span>
-            <MoreHorizontal className="size-4" />
-          </DropdownMenuTrigger>
-
-          <DropdownMenuContent align="end">
-            <DropdownMenuGroup>
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-
-              <DropdownMenuItem
-                onClick={() => navigator.clipboard.writeText(admin.id)}
-              >
-                Copy admin ID
-              </DropdownMenuItem>
-
-              <DropdownMenuItem>View admin</DropdownMenuItem>
-
-              <DropdownMenuItem>Edit permissions</DropdownMenuItem>
-
-              <DropdownMenuItem>Reset password</DropdownMenuItem>
-            </DropdownMenuGroup>
-
-            <DropdownMenuSeparator />
-
-            <DropdownMenuItem className="text-destructive">
-              Remove admin
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
+      return <RowActions id={row.original.id} />;
     },
   },
 ];

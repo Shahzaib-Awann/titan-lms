@@ -40,6 +40,8 @@ yarn-error.log*
 # Migrations
 /lib/db/migrations
 
+# Uploads
+/public/uploads
 
 # typescript
 *.tsbuildinfo
