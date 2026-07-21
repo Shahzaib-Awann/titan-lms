@@ -7,23 +7,17 @@ import { hashPassword } from "@/lib/helpers/password";
 import { nanoid } from "nanoid";
 import { eq, isNull, and } from "drizzle-orm";
 import { z } from "zod";
-import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { uploadAssetAction } from "./asset.action";
 import path from "path";
 import fs from "fs/promises";
+import { requireRole } from "./auth.action";
 
 /**
  * Fetch all active admin users
  */
 export async function getAdmins() {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      throw new Error("Unauthorized");
-    }
-
     return await db.transaction(async (tx) => {
       return await tx
         .select({
@@ -56,11 +50,7 @@ export async function getAdmins() {
  */
 export async function getAdminForEdit(id: string) {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      throw new Error("Unauthorized");
-    }
+    await requireRole("admin");
 
     return await db.transaction(async (tx) => {
       const [admin] = await tx
@@ -104,13 +94,10 @@ export async function getAdminForEdit(id: string) {
  * Create or update admin
  */
 export async function saveAdmin(
-  data: z.infer<typeof AdminFormSchema> & { removeAvatar?: boolean }
+  data: z.infer<typeof AdminFormSchema> & { removeAvatar?: boolean },
 ) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      throw new Error("Unauthorized");
-    }
+    await requireRole("admin");
 
     const parsed = AdminFormSchema.parse(data);
     let avatarAssetId: string | undefined;
@@ -157,11 +144,19 @@ export async function saveAdmin(
               .limit(1);
 
             if (oldAsset) {
-              const relativePath = oldAsset.url.startsWith("/") ? oldAsset.url.slice(1) : oldAsset.url;
-              diskFileToRemove = path.join(process.cwd(), "public", relativePath);
+              const relativePath = oldAsset.url.startsWith("/")
+                ? oldAsset.url.slice(1)
+                : oldAsset.url;
+              diskFileToRemove = path.join(
+                process.cwd(),
+                "public",
+                relativePath,
+              );
 
               // Delete the old row from assets table
-              await tx.delete(assets).where(eq(assets.id, existingUser.avatarAssetId));
+              await tx
+                .delete(assets)
+                .where(eq(assets.id, existingUser.avatarAssetId));
             }
           }
 
@@ -220,14 +215,19 @@ export async function saveAdmin(
       try {
         await fs.unlink(diskFileToRemove);
       } catch (unlinkError) {
-        console.error("Warning: Failed to erase replaced asset from disk storage:", unlinkError);
+        console.error(
+          "Warning: Failed to erase replaced asset from disk storage:",
+          unlinkError,
+        );
       }
     }
 
     return { success: true };
   } catch (error) {
     console.error("saveAdminAction Error:", error);
-    throw new Error(error instanceof Error ? error.message : "Failed to save admin.");
+    throw new Error(
+      error instanceof Error ? error.message : "Failed to save admin.",
+    );
   }
 }
 
@@ -236,11 +236,7 @@ export async function saveAdmin(
  */
 export async function deleteAdmin(id: string) {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      throw new Error("Unauthorized");
-    }
+    await requireRole("admin");
 
     return await db.transaction(async (tx) => {
       const [admin] = await tx

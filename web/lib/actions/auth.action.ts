@@ -1,6 +1,8 @@
 import { eq, and, isNull } from "drizzle-orm";
 import { db } from "../db";
 import { users } from "../db/schema";
+import { auth } from "@/auth";
+import { Role } from "@/types/common";
 
 /**
  * Retrieves active user data for authentication.
@@ -51,4 +53,27 @@ export async function getUserForSignin(cnic: string) {
       error instanceof Error ? error.message : "Unable to retrieve user.",
     );
   }
+}
+
+/**
+ * Enforce role-based access control.
+ *
+ * Throws an error if:
+ * - user is not logged in
+ * - user role does not match required role
+ */
+export async function requireRole(role: Role) {
+  const session = await auth();
+
+  const user = session?.user;
+
+  if (!user?.id) {
+    throw new Error("Unauthorized");
+  }
+
+  if (user.role !== role) {
+    throw new Error("Forbidden");
+  }
+
+  return user;
 }

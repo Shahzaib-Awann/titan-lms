@@ -22,6 +22,7 @@ import { Eye, EyeOff, Loader2, Pencil, User } from "lucide-react";
 import z from "zod";
 import Image from "next/image";
 import { Separator } from "@/components/ui/separator";
+import { Role, UserStatus } from "@/types/common";
 
 type AdminFormValues = z.infer<typeof AdminFormSchema>;
 
@@ -30,9 +31,9 @@ type AdminFormProps = {
     id: string;
     cnic: string;
     fullName: string;
-    phone: string;
-    role: "admin" | "trainer" | "student";
-    status: "active" | "inactive" | "suspended";
+    phone: string | null;
+    role: Role;
+    status: UserStatus;
     avatarAssetId: string | null;
     avatarUrl: string | null;
   };

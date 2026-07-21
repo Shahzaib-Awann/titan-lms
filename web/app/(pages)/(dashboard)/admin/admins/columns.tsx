@@ -7,18 +7,19 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { RowActions } from "./row-actions";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Role, UserStatus } from "@/types/common";
 
 export interface Admin {
   id: string;
   cnic: string;
   fullName: string;
-  phone: string;
+  phone: string | null;
 
   avatarId: string | null;
   avatarUrl: string | null;
 
-  role: "admin" | "trainer" | "student";
-  status: "active" | "inactive" | "suspended";
+  role: Role;
+  status: UserStatus;
 
   createdAt: Date;
 }
@@ -100,7 +101,7 @@ export const columns: ColumnDef<Admin>[] = [
       <DataTableColumnHeader column={column} title="Status" />
     ),
     cell: ({ row }) => {
-      const status = row.getValue("status") as Admin["status"];
+      const status = row.getValue("status") as UserStatus;
 
       return (
         <Badge

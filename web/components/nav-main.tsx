@@ -64,20 +64,20 @@ export function NavMain({ role }: { role: Role }) {
                     open ? "h-11 pr-2" : "justify-center w-9 h-9",
                   )}
                 >
-                  <SidebarMenuButton
-                    tooltip={item.title}
-                    className={cn(
-                      "h-full rounded-full",
-                      open ? "w-full px-2" : "w-11 justify-center",
-                    )}
-                  >
-                    <Link href={item.url} className={linkContainerStyles}>
+                  <Link href={item.url} className={linkContainerStyles}>
+                    <SidebarMenuButton
+                      tooltip={item.title}
+                      className={cn(
+                        "h-full rounded-full",
+                        open ? "w-full px-2" : "w-11 justify-center",
+                      )}
+                    >
                       <item.icon className="size-5 shrink-0" />
                       {open && (
                         <span className="font-normal">{item.title}</span>
                       )}
-                    </Link>
-                  </SidebarMenuButton>
+                    </SidebarMenuButton>
+                  </Link>
 
                   {open && (
                     // Dropdown trigger for child links
@@ -148,20 +148,20 @@ function NavDropdownItems({
           // Creates another dropdown level
           return (
             <DropdownMenuSub key={child.title}>
-              <DropdownMenuSubTrigger className="cursor-pointer">
-                <Link
-                  href={child.url}
-                  className={cn(
-                    "flex items-center w-full",
-                    isActive && "text-primary font-medium",
-                  )}
-                >
+              <Link
+                href={child.url}
+                className={cn(
+                  "flex items-center w-full",
+                  isActive && "text-primary font-medium",
+                )}
+              >
+                <DropdownMenuSubTrigger className="cursor-pointer w-full">
                   {child.icon && (
                     <child.icon className="size-4 mr-2 shrink-0" />
                   )}
                   <span>{child.title}</span>
-                </Link>
-              </DropdownMenuSubTrigger>
+                </DropdownMenuSubTrigger>
+              </Link>
 
               <DropdownMenuSubContent>
                 <NavDropdownItems items={child.children} pathname={pathname} />
@@ -172,14 +172,15 @@ function NavDropdownItems({
 
         // Creates final clickable dropdown link
         return (
-          <DropdownMenuItem key={child.title}>
-            <Link
-              href={child.url}
-              className={cn(
-                "cursor-pointer w-full flex items-center justify-between",
-                isActive ? "text-primary" : "",
-              )}
-            >
+          <Link
+            key={child.title}
+            href={child.url}
+            className={cn(
+              "cursor-pointer w-full flex items-center justify-between",
+              isActive ? "text-primary" : "",
+            )}
+          >
+            <DropdownMenuItem className="w-full">
               <div className="flex items-center">
                 {child.icon && <child.icon className="size-4 mr-2 shrink-0" />}
                 <span>{child.title}</span>
@@ -188,8 +189,8 @@ function NavDropdownItems({
               {isActive && (
                 <div className="size-1.5 rounded-full bg-primary ml-2 shrink-0" />
               )}
-            </Link>
-          </DropdownMenuItem>
+            </DropdownMenuItem>
+          </Link>
         );
       })}
     </>

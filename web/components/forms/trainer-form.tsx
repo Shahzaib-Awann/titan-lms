@@ -30,14 +30,16 @@ import {
 } from "@/components/ui/popover";
 import { saveTrainer } from "@/lib/actions/trainer.action";
 import toast from "react-hot-toast";
+import { UserStatus } from "@/types/common";
 
 interface TrainerFormProps {
   data?: {
     id: string;
     fullName: string;
     phone: string | null;
+    cnic: string;
 
-    status: "active" | "inactive" | "suspended";
+    status: UserStatus;
 
     avatarAssetId: string | null;
     avatarUrl: string | null;
@@ -68,6 +70,7 @@ export function TrainerForm({ data }: TrainerFormProps) {
     defaultValues: {
       id: data?.id ?? "",
       fullName: data?.fullName ?? "",
+      cnic: data?.cnic ?? "",
       phone: data?.phone ?? "",
       password: "",
       employeeCode: data?.employeeCode ?? "",
@@ -213,6 +216,27 @@ export function TrainerForm({ data }: TrainerFormProps) {
                   className="h-11 rounded-xl"
                   placeholder="Sarah Connor"
                   aria-invalid={!!error}
+                />
+
+                <FieldError errors={[error]} />
+              </Field>
+            )}
+          />
+
+          <Controller
+            name="cnic"
+            control={control}
+            render={({ field, fieldState: { error } }) => (
+              <Field className="space-y-2" data-invalid={!!error}>
+                <FieldLabel htmlFor="cnic">CNIC/B-Form</FieldLabel>
+
+                <Input
+                  {...field}
+                  id="cnic"
+                  className="h-11 rounded-xl"
+                  placeholder="1234512345678"
+                  aria-invalid={!!error}
+                  type="number"
                 />
 
                 <FieldError errors={[error]} />

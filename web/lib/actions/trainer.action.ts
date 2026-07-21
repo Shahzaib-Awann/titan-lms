@@ -6,24 +6,18 @@ import { hashPassword } from "@/lib/helpers/password";
 import { nanoid } from "nanoid";
 import { eq, isNull, and } from "drizzle-orm";
 import { z } from "zod";
-import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { uploadAssetAction } from "./asset.action";
 import path from "path";
 import fs from "fs/promises";
 import { TrainerFormSchema } from "../zod/admin.schema";
+import { requireRole } from "./auth.action";
 
 /**
  * Fetch all active trainers
  */
 export async function getTrainers() {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      throw new Error("Unauthorized");
-    }
-
     return await db.transaction(async (tx) => {
       return await tx
         .select({
@@ -35,6 +29,7 @@ export async function getTrainers() {
 
           fullName: users.fullName,
           status: users.status,
+          cnic: users.cnic,
 
           employeeCode: trainerProfiles.employeeCode,
           specialization: trainerProfiles.specialization,
@@ -70,11 +65,7 @@ export async function saveTrainer(
   },
 ) {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      throw new Error("Unauthorized");
-    }
+    await requireRole("admin");
 
     const parsed = TrainerFormSchema.parse(data);
 
@@ -106,6 +97,7 @@ export async function saveTrainer(
           fullName: parsed.fullName,
           phone: parsed.phone,
           status: parsed.status,
+          cnic: parsed.cnic,
         };
 
         if (parsed.password?.trim()) {
@@ -194,11 +186,11 @@ export async function saveTrainer(
       await tx.insert(users).values({
         id: userId,
 
-        cnic: nanoid(13),
-
         password: await hashPassword(parsed.password),
 
         fullName: parsed.fullName,
+
+        cnic: parsed.cnic,
 
         phone: parsed.phone,
 
@@ -254,11 +246,7 @@ export async function saveTrainer(
  */
 export async function getTrainerForEdit(id: string) {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      throw new Error("Unauthorized");
-    }
+    await requireRole("admin");
 
     return await db.transaction(async (tx) => {
       const [trainer] = await tx
@@ -267,6 +255,7 @@ export async function getTrainerForEdit(id: string) {
 
           fullName: users.fullName,
           phone: users.phone,
+          cnic: users.cnic,
           status: users.status,
 
           avatarAssetId: users.avatarAssetId,
@@ -282,38 +271,28 @@ export async function getTrainerForEdit(id: string) {
         })
         .from(users)
 
-        .innerJoin(
-          trainerProfiles,
-          eq(users.id, trainerProfiles.userId)
-        )
+        .innerJoin(trainerProfiles, eq(users.id, trainerProfiles.userId))
 
-        .leftJoin(
-          assets,
-          eq(users.avatarAssetId, assets.id)
-        )
+        .leftJoin(assets, eq(users.avatarAssetId, assets.id))
 
         .where(
           and(
             eq(users.id, id),
             eq(users.role, "trainer"),
             isNull(users.deletedAt),
-            isNull(trainerProfiles.deletedAt)
-          )
+            isNull(trainerProfiles.deletedAt),
+          ),
         )
 
         .limit(1);
 
-
       return trainer ?? null;
     });
-
   } catch (error) {
     console.error("getTrainerForEditAction Error:", error);
 
     throw new Error(
-      error instanceof Error
-        ? error.message
-        : "Failed to fetch trainer."
+      error instanceof Error ? error.message : "Failed to fetch trainer.",
     );
   }
 }
@@ -323,11 +302,7 @@ export async function getTrainerForEdit(id: string) {
  */
 export async function deleteTrainer(id: string) {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      throw new Error("Unauthorized");
-    }
+    await requireRole("admin");
 
     return await db.transaction(async (tx) => {
       const [trainer] = await tx
@@ -337,31 +312,23 @@ export async function deleteTrainer(id: string) {
           trainerProfileId: trainerProfiles.id,
         })
         .from(users)
-        .innerJoin(
-          trainerProfiles,
-          eq(users.id, trainerProfiles.userId)
-        )
+        .innerJoin(trainerProfiles, eq(users.id, trainerProfiles.userId))
         .where(
           and(
             eq(users.id, id),
             isNull(users.deletedAt),
-            isNull(trainerProfiles.deletedAt)
-          )
+            isNull(trainerProfiles.deletedAt),
+          ),
         )
         .limit(1);
-
 
       if (!trainer) {
         throw new Error("Trainer not found.");
       }
 
-
       if (trainer.role !== "trainer") {
-        throw new Error(
-          "Only trainer accounts can be deleted."
-        );
+        throw new Error("Only trainer accounts can be deleted.");
       }
-
 
       // Soft delete user account
       await tx
@@ -369,10 +336,7 @@ export async function deleteTrainer(id: string) {
         .set({
           deletedAt: new Date(),
         })
-        .where(
-          eq(users.id, id)
-        );
-
+        .where(eq(users.id, id));
 
       // Soft delete trainer profile
       await tx
@@ -380,35 +344,20 @@ export async function deleteTrainer(id: string) {
         .set({
           deletedAt: new Date(),
         })
-        .where(
-          eq(
-            trainerProfiles.id,
-            trainer.trainerProfileId
-          )
-        );
-
+        .where(eq(trainerProfiles.id, trainer.trainerProfileId));
 
       revalidatePath("/admin/trainers");
-
 
       return {
         success: true,
         id,
       };
     });
-
-
   } catch (error) {
-    console.error(
-      "deleteTrainerAction Error:",
-      error
-    );
-
+    console.error("deleteTrainerAction Error:", error);
 
     throw new Error(
-      error instanceof Error
-        ? error.message
-        : "Failed to delete trainer."
+      error instanceof Error ? error.message : "Failed to delete trainer.",
     );
   }
 }

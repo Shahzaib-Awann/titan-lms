@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { RowActions } from "./row-actions";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserStatus } from "@/types/common";
 
 export interface Trainer {
   id: string;
@@ -21,7 +22,7 @@ export interface Trainer {
   specialization: string | null;
   hourlyRate: number | null;
 
-  status: "active" | "inactive" | "suspended";
+  status: UserStatus;
 
   joinedAt: Date | null;
 }
@@ -111,7 +112,7 @@ export const columns: ColumnDef<Trainer>[] = [
     ),
 
     cell: ({ row }) => {
-      const status = row.getValue("status") as Trainer["status"];
+      const status = row.getValue("status") as UserStatus;
 
       return (
         <Badge
