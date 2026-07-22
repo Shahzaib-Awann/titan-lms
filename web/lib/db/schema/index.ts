@@ -124,6 +124,7 @@ export const courseBatches = mysqlTable("course_batches", {
 
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+  deletedAt: timestamp("deleted_at"),
 });
 
 // Batch Schedules

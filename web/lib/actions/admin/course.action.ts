@@ -204,6 +204,9 @@ export async function deleteCourse(id: string) {
         throw new Error("Course not found.");
       }
 
+      /**
+       * Soft delete course
+       */
       await tx
         .update(courses)
         .set({
@@ -211,7 +214,18 @@ export async function deleteCourse(id: string) {
         })
         .where(eq(courses.id, id));
 
+      /**
+       * Soft delete all batches under this course
+       */
+      await tx
+        .update(courseBatches)
+        .set({
+          deletedAt: new Date(),
+        })
+        .where(eq(courseBatches.courseId, id));
+
       revalidatePath("/admin/courses");
+      revalidatePath("/admin/course-batches");
 
       return {
         success: true,
