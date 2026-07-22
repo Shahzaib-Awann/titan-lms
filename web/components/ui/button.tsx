@@ -74,6 +74,16 @@ const buttonVariants = cva(
           "hover:text-primary",
           "hover:shadow-md",
         ],
+
+        destructive: [
+          "bg-destructive",
+          "text-destructive-foreground",
+          "shadow-lg shadow-destructive/20",
+          "hover:bg-destructive/90",
+          "hover:shadow-xl",
+          "hover:shadow-destructive/30",
+          "hover:-translate-y-0.5",
+        ],
       },
 
       size: {

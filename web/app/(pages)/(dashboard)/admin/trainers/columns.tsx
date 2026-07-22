@@ -1,39 +1,33 @@
 "use client";
 
-import { MoreHorizontal } from "lucide-react";
-
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+
 import { DataTableColumnHeader } from "@/components/ui/data-table/data-table-column-header";
 import { ColumnDef } from "@tanstack/react-table";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import { RowActions } from "./row-actions";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserStatus } from "@/types/common";
 
-export interface Teacher {
+export interface Trainer {
   id: string;
+  trainerId: string;
+  avatarId: string | null;
+  avatarUrl: string | null;
 
-  name: string;
-  email: string;
-  phone?: string;
+  fullName: string;
 
-  avatar?: string;
+  employeeCode: string;
+  specialization: string | null;
+  hourlyRate: number | null;
 
-  expertise: string;
-  assignedCourses: number;
-  totalStudents: number;
+  status: UserStatus;
 
-  status: "active" | "inactive" | "pending";
-
-  joinedAt: string;
+  joinedAt: Date | null;
 }
 
-export const columns: ColumnDef<Teacher>[] = [
+export const columns: ColumnDef<Trainer>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -44,6 +38,7 @@ export const columns: ColumnDef<Teacher>[] = [
         aria-label="Select all"
       />
     ),
+
     cell: ({ row }) => (
       <Checkbox
         label=""
@@ -52,52 +47,62 @@ export const columns: ColumnDef<Teacher>[] = [
         aria-label="Select row"
       />
     ),
+
     enableSorting: false,
     enableHiding: false,
   },
 
   {
-    accessorKey: "name",
+    accessorKey: "fullName",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Name" />
     ),
-    cell: ({ row }) => (
-      <div className="font-medium">{row.getValue("name")}</div>
+    cell: ({ row }) => {
+      const trainer = row.original;
+
+      return (
+        <div className="flex items-center gap-3">
+          <Avatar className="h-9 w-9">
+            <AvatarImage
+              src={trainer.avatarUrl ?? undefined}
+              alt={trainer.fullName}
+            />
+            <AvatarFallback initial={trainer.fullName} />
+          </Avatar>
+
+          <div className="font-medium">{trainer.fullName}</div>
+        </div>
+      );
+    },
+  },
+
+  {
+    accessorKey: "employeeCode",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Employee Code" />
     ),
   },
 
   {
-    accessorKey: "email",
+    accessorKey: "specialization",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Email" />
+      <DataTableColumnHeader column={column} title="Specialization" />
     ),
+
+    cell: ({ row }) => <div>{row.getValue("specialization") || "N/A"}</div>,
   },
 
   {
-    accessorKey: "expertise",
+    accessorKey: "hourlyRate",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Expertise" />
+      <DataTableColumnHeader column={column} title="Hourly Rate" />
     ),
-  },
 
-  {
-    accessorKey: "assignedCourses",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Courses" />
-    ),
-    cell: ({ row }) => (
-      <div className="text-center">{row.getValue("assignedCourses")}</div>
-    ),
-  },
+    cell: ({ row }) => {
+      const rate = row.getValue("hourlyRate") as number | null;
 
-  {
-    accessorKey: "totalStudents",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Students" />
-    ),
-    cell: ({ row }) => (
-      <div className="text-center">{row.getValue("totalStudents")}</div>
-    ),
+      return <div>{rate ? `${rate} PKR` : "N/A"}</div>;
+    },
   },
 
   {
@@ -105,21 +110,24 @@ export const columns: ColumnDef<Teacher>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Status" />
     ),
+
     cell: ({ row }) => {
-      const status = row.getValue("status") as Teacher["status"];
+      const status = row.getValue("status") as UserStatus;
 
       return (
-        <span
-          className={
+        <Badge
+          variant="secondary"
+          className={cn(
             status === "active"
               ? "text-green-600"
-              : status === "pending"
-                ? "text-yellow-600"
-                : "text-muted-foreground"
-          }
+              : status === "suspended"
+                ? "text-red-600"
+                : "text-muted-foreground",
+            "rounded-lg",
+          )}
         >
           {status}
-        </span>
+        </Badge>
       );
     },
   },
@@ -129,47 +137,25 @@ export const columns: ColumnDef<Teacher>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Joined" />
     ),
-    cell: ({ row }) =>
-      new Intl.DateTimeFormat("en-US", {
-        dateStyle: "medium",
-      }).format(new Date(row.getValue("joinedAt"))),
+
+    cell: ({ row }) => {
+      const date = row.getValue("joinedAt") as Date | null;
+
+      return date
+        ? new Intl.DateTimeFormat("en-US", {
+            dateStyle: "medium",
+          }).format(new Date(date))
+        : "N/A";
+    },
   },
 
   {
     id: "actions",
+
     cell: ({ row }) => {
-      const teacher = row.original;
+      const trainer = row.original;
 
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger className="h-8 w-8 p-0">
-            <span className="sr-only">Open menu</span>
-            <MoreHorizontal className="size-4" />
-          </DropdownMenuTrigger>
-
-          <DropdownMenuContent align="end">
-            <DropdownMenuGroup>
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-
-              <DropdownMenuItem
-                onClick={() => navigator.clipboard.writeText(teacher.id)}
-              >
-                Copy teacher ID
-              </DropdownMenuItem>
-
-              <DropdownMenuItem>View teacher</DropdownMenuItem>
-
-              <DropdownMenuItem>Edit teacher</DropdownMenuItem>
-            </DropdownMenuGroup>
-
-            <DropdownMenuSeparator />
-
-            <DropdownMenuItem className="text-destructive">
-              Delete teacher
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
+      return <RowActions id={trainer.id} />;
     },
   },
 ];

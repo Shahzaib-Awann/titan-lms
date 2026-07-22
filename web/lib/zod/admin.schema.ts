@@ -1,0 +1,186 @@
+import { z } from "zod";
+
+export const AdminFormSchema = z
+  .object({
+    id: z.string().optional(),
+
+    cnic: z
+      .string()
+      .min(13, "CNIC/B-Form must be 13 digits")
+      .max(13, "CNIC/B-Form must be 13 digits")
+      .regex(/^\d+$/, "CNIC/B-Form must contain only numbers"),
+
+    password: z
+      .string()
+      .max(30, "Password must be less than 30 characters")
+      .optional()
+      .or(z.literal("")),
+
+    fullName: z.string().min(2, "Full Name must be at least 2 characters"),
+
+    phone: z.string().optional().or(z.literal("")),
+    status: z.enum(["active", "inactive", "suspended"], {
+      error: "Status is required",
+    }),
+
+    // Uploaded file or null
+    avatar: z
+      .instanceof(File)
+      .nullable()
+      .optional()
+      .refine(
+      (file) => !file || file.size <= 2 * 1024 * 1024,
+      "Image must be less than 2MB"
+    ),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.id && (!data.password || data.password.trim() === "")) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Password is required when creating a new user",
+        path: ["password"],
+      });
+    }
+  });
+
+  export const TrainerFormSchema = z
+  .object({
+    id: z.string().optional(),
+
+    fullName: z
+      .string()
+      .min(2, "Full Name must be at least 2 characters"),
+
+    phone: z
+      .string()
+      .optional()
+      .or(z.literal("")),
+
+    cnic: z
+      .string()
+      .min(13, "CNIC/B-Form must be 13 digits")
+      .max(13, "CNIC/B-Form must be 13 digits")
+      .regex(/^\d+$/, "CNIC/B-Form must contain only numbers"),
+
+    password: z
+      .string()
+      .max(30, "Password must be less than 30 characters")
+      .optional()
+      .or(z.literal("")),
+
+    employeeCode: z
+      .string()
+      .min(2, "Employee Code is required"),
+
+    specialization: z
+      .string()
+      .min(2, "Specialization must be at least 2 characters"),
+
+    hourlyRate: z
+      .string()
+      .min(1, "Hourly Rate is required")
+      .refine(
+        (value) => !isNaN(Number(value)) && Number(value) >= 0,
+        "Hourly Rate must be a valid positive number",
+      ),
+
+    joinedDate: z
+      .string()
+      .min(1, "Joined Date is required"),
+
+    status: z.enum(["active", "inactive", "suspended"], {
+      error: "Status is required",
+    }),
+
+    // Uploaded file or null
+    avatar: z
+      .instanceof(File)
+      .nullable()
+      .optional()
+      .refine(
+      (file) => !file || file.size <= 2 * 1024 * 1024,
+      "Image must be less than 2MB"
+    ),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.id && (!data.password || data.password.trim() === "")) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Password is required when creating a new trainer",
+        path: ["password"],
+      });
+    }
+  });
+
+  export const StudentFormSchema = z
+  .object({
+    id: z.string().optional(),
+
+    fullName: z
+      .string()
+      .min(2, "Full Name must be at least 2 characters"),
+
+    cnic: z
+      .string()
+      .min(13, "CNIC/B-Form must be 13 digits")
+      .max(13, "CNIC/B-Form must be 13 digits")
+      .regex(/^\d+$/, "CNIC/B-Form must contain only numbers"),
+
+    phone: z
+      .string()
+      .optional()
+      .or(z.literal("")),
+
+    password: z
+      .string()
+      .max(30, "Password must be less than 30 characters")
+      .optional()
+      .or(z.literal("")),
+
+    rollNumber: z
+      .string()
+      .min(1, "Roll Number is required"),
+
+    dateOfBirth: z
+      .string()
+      .min(1, "Date of Birth is required"),
+
+    guardianName: z
+      .string()
+      .min(2, "Guardian Name must be at least 2 characters"),
+
+    guardianPhone: z
+      .string()
+      .min(1, "Guardian Phone is required"),
+
+    address: z
+      .string()
+      .min(5, "Address must be at least 5 characters"),
+
+    admissionDate: z
+      .string()
+      .min(1, "Admission Date is required"),
+
+    status: z.enum(["active", "inactive", "suspended"], {
+      error: "Status is required",
+    }),
+
+    // Uploaded file or null
+    avatar: z
+      .instanceof(File)
+      .nullable()
+      .optional()
+      .refine(
+        (file) => !file || file.size <= 2 * 1024 * 1024,
+        "Image must be less than 2MB"
+      ),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.id && (!data.password || data.password.trim() === "")) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Password is required when creating a new student",
+        path: ["password"],
+      });
+    }
+  });

@@ -261,3 +261,12 @@ input:-webkit-autofill:focus {
     transition-duration: 0.01ms !important;
   }
 }
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px hsl(var(--card)) inset !important;
+  -webkit-text-fill-color: hsl(var(--foreground)) !important;
+  transition: background-color 9999s ease-in-out 0s;
+}

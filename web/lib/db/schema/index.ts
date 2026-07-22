@@ -22,7 +22,7 @@ export const users = mysqlTable("users", {
   password: varchar("password", { length: 255 }).notNull(),
 
   fullName: varchar("full_name", { length: 255 }).notNull(),
-  phone: varchar("phone", { length: 20 }).notNull(),
+  phone: varchar("phone", { length: 20 }),
 
   role: userRoleEnum.notNull(),
   status: userStatusEnum.notNull().default("active"),

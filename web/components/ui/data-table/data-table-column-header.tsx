@@ -40,7 +40,7 @@ export function DataTableColumnHeader<TData, TValue>({
             />
           }
         >
-          <span>{title}</span>
+          <span className="uppercase text-xs">{title}</span>
 
           {column.getIsSorted() === "desc" ? (
             <ArrowDown />

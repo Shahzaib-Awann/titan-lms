@@ -1,29 +1,30 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { MoreHorizontal } from "lucide-react";
 
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { DataTableColumnHeader } from "@/components/ui/data-table/data-table-column-header";
+import { RowActions } from "./row-actions";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import { UserStatus } from "@/types/common";
 
 export interface Student {
   id: string;
-  name: string;
-  email: string;
-  phone?: string;
-  avatar?: string;
-  enrolledCourses: number;
-  status: "active" | "inactive" | "pending";
-  joinedAt: string;
+  studentId: string;
+
+  avatarId: string | null;
+  avatarUrl: string | null;
+
+  rollNumber: string;
+  fullName: string;
+  cnic: string;
+  guardian: string | null;
+
+  admissionDate: string | Date | null;
+
+  status: UserStatus;
 }
 
 export const columns: ColumnDef<Student>[] = [
@@ -50,36 +51,63 @@ export const columns: ColumnDef<Student>[] = [
   },
 
   {
-    accessorKey: "name",
+    accessorKey: "fullName",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Name" />
+      <DataTableColumnHeader column={column} title="Student" />
     ),
-    cell: ({ row }) => (
-      <div className="font-medium">{row.getValue("name")}</div>
+    cell: ({ row }) => {
+      const student = row.original;
+
+      return (
+        <div className="flex items-center gap-3">
+          <Avatar className="h-9 w-9">
+            <AvatarImage
+              src={student.avatarUrl ?? undefined}
+              alt={student.fullName}
+            />
+            <AvatarFallback initial={student.fullName} />
+          </Avatar>
+
+          <div>
+            <div className="font-medium">{student.fullName}</div>
+            <div className="text-xs text-muted-foreground">
+              {student.rollNumber}
+            </div>
+          </div>
+        </div>
+      );
+    },
+  },
+
+  {
+    accessorKey: "cnic",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="CNIC" />
     ),
   },
 
   {
-    accessorKey: "email",
+    accessorKey: "guardian",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Email" />
+      <DataTableColumnHeader column={column} title="Guardian" />
     ),
+    cell: ({ row }) => row.getValue("guardian") || "-",
   },
 
   {
-    accessorKey: "phone",
-    header: "Phone",
-    cell: ({ row }) => row.getValue("phone") || "-",
-  },
-
-  {
-    accessorKey: "enrolledCourses",
+    accessorKey: "admissionDate",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Courses" />
+      <DataTableColumnHeader column={column} title="Admission Date" />
     ),
-    cell: ({ row }) => (
-      <div className="text-center">{row.getValue("enrolledCourses")}</div>
-    ),
+    cell: ({ row }) => {
+      const value = row.getValue("admissionDate");
+
+      if (!value) return "-";
+
+      return new Intl.DateTimeFormat("en-US", {
+        dateStyle: "medium",
+      }).format(new Date(value as string));
+    },
   },
 
   {
@@ -88,71 +116,30 @@ export const columns: ColumnDef<Student>[] = [
       <DataTableColumnHeader column={column} title="Status" />
     ),
     cell: ({ row }) => {
-      const status = row.getValue("status") as Student["status"];
+      const status = row.getValue("status") as UserStatus;
 
       return (
-        <span
-          className={
+        <Badge
+          variant="secondary"
+          className={cn(
             status === "active"
               ? "text-green-600"
-              : status === "pending"
-                ? "text-yellow-600"
-                : "text-muted-foreground"
-          }
+              : status === "suspended"
+                ? "text-red-600"
+                : "text-muted-foreground",
+            "rounded-lg",
+          )}
         >
           {status}
-        </span>
+        </Badge>
       );
-    },
-  },
-
-  {
-    accessorKey: "joinedAt",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Joined" />
-    ),
-    cell: ({ row }) => {
-      return new Intl.DateTimeFormat("en-US", {
-        dateStyle: "medium",
-      }).format(new Date(row.getValue("joinedAt")));
     },
   },
 
   {
     id: "actions",
     cell: ({ row }) => {
-      const student = row.original;
-
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger className="h-8 w-8 p-0">
-            <span className="sr-only">Open menu</span>
-            <MoreHorizontal className="size-4" />
-          </DropdownMenuTrigger>
-
-          <DropdownMenuContent align="end">
-            <DropdownMenuGroup>
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-
-              <DropdownMenuItem
-                onClick={() => navigator.clipboard.writeText(student.id)}
-              >
-                Copy student ID
-              </DropdownMenuItem>
-
-              <DropdownMenuItem>View student</DropdownMenuItem>
-
-              <DropdownMenuItem>Edit student</DropdownMenuItem>
-            </DropdownMenuGroup>
-
-            <DropdownMenuSeparator />
-
-            <DropdownMenuItem className="text-destructive">
-              Delete student
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
+      return <RowActions id={row.original.id} />;
     },
   },
 ];
