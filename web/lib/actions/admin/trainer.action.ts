@@ -7,10 +7,10 @@ import { nanoid } from "nanoid";
 import { eq, isNull, and } from "drizzle-orm";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { uploadAssetAction } from "./asset.action";
+import { uploadAssetAction } from "../asset.action";
 import path from "path";
 import fs from "fs/promises";
-import { TrainerFormSchema } from "../zod/admin.schema";
+import { TrainerFormSchema } from "../../zod/admin.schema";
 import { requireRole } from "./auth.action";
 
 /**

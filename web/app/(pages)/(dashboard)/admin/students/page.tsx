@@ -1,6 +1,6 @@
 import { DataTable } from "@/components/ui/data-table/data-table";
 import { columns } from "./columns";
-import { getStudents } from "@/lib/actions/student.action";
+import { getStudents } from "@/lib/actions/admin/student.action";
 
 export default async function DemoPage() {
   const data = await getStudents();

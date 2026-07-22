@@ -1,5 +1,5 @@
 import { AdminForm } from "@/components/forms/admin-form";
-import { getAdminForEdit } from "@/lib/actions/admin.action";
+import { getAdminForEdit } from "@/lib/actions/admin/admin.action";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {

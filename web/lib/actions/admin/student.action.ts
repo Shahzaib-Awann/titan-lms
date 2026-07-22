@@ -11,7 +11,7 @@ import { db } from "@/lib/db";
 import { assets, studentProfiles, users } from "@/lib/db/schema";
 import { StudentFormSchema } from "@/lib/zod/admin.schema";
 import { uploadAssetAction } from "@/lib/actions/asset.action";
-import { hashPassword } from "../helpers/password";
+import { hashPassword } from "../../helpers/password";
 import { requireRole } from "./auth.action";
 
 /**

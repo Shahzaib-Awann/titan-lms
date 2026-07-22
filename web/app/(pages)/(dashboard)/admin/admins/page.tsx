@@ -1,6 +1,6 @@
 import { DataTable } from "@/components/ui/data-table/data-table";
 import { columns } from "./columns";
-import { getAdmins } from "@/lib/actions/admin.action";
+import { getAdmins } from "@/lib/actions/admin/admin.action";
 
 export default async function AdminPage() {
   const data = await getAdmins();

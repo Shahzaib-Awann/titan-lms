@@ -29,7 +29,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import toast from "react-hot-toast";
-import { saveStudent } from "@/lib/actions/student.action";
+import { saveStudent } from "@/lib/actions/admin/student.action";
 import { Textarea } from "../ui/textarea";
 import { UserStatus } from "@/types/common";
 

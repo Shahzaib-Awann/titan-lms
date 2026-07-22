@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AdminFormSchema } from "@/lib/zod/admin.schema";
-import { saveAdmin } from "@/lib/actions/admin.action";
+import { saveAdmin } from "@/lib/actions/admin/admin.action";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

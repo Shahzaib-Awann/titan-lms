@@ -7,12 +7,15 @@ import {
   int,
   text,
   bigint,
+  decimal,
+  time,
 } from "drizzle-orm/mysql-core";
 
 // Enums
 export const userRoleEnum = mysqlEnum("role", ["admin", "trainer", "student"]);
 export const userStatusEnum = mysqlEnum("status", ["active", "inactive", "suspended"]);
 export const assetExtensionEnum = mysqlEnum("extension", ["pdf", "mp4", "png", "jpg", "jpeg", "md"]);
+export const weekdayEnum = mysqlEnum("weekday", ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"]);
 
 // Users table
 export const users = mysqlTable("users", {
@@ -88,4 +91,51 @@ export const assets = mysqlTable("assets", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
   deletedAt: timestamp("deleted_at"),
+});
+
+export const courses = mysqlTable("courses", {
+  id: varchar("id", { length: 21 }).primaryKey(),
+
+  title: varchar("title", { length: 255 }).notNull(),
+  slug: varchar("slug", { length: 255 }).notNull().unique(),
+  description: text("description"),
+
+  durationWeeks: int("duration_weeks"),
+  feeAmount: decimal("fee_amount", { precision: 10, scale: 2 }),
+
+  createdBy: varchar("created_by", { length: 21 }).notNull().references(() => users.id),
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+  deletedAt: timestamp("deleted_at"),
+});
+
+// Course Batches
+export const courseBatches = mysqlTable("course_batches", {
+  id: varchar("id", { length: 21 }).primaryKey(),
+
+  courseId: varchar("course_id", { length: 21 }).notNull().references(() => courses.id),
+  trainerId: varchar("trainer_id", { length: 21 }).notNull().references(() => trainerProfiles.id),
+
+  batchName: varchar("batch_name", { length: 255 }).notNull(),
+
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date"),
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+// Batch Schedules
+export const batchSchedules = mysqlTable("batch_schedules", {
+  id: varchar("id", { length: 21 }).primaryKey(),
+
+  batchId: varchar("batch_id", { length: 21 }).notNull().references(() => courseBatches.id),
+
+  weekday: weekdayEnum.notNull(),
+
+  startTime: time("start_time").notNull(),
+  endTime: time("end_time").notNull(),
+
+  room: varchar("room", { length: 100 }),
 });

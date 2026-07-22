@@ -1,5 +1,5 @@
 import { StudentForm } from "@/components/forms/student-form";
-import { getStudentForEdit } from "@/lib/actions/student.action";
+import { getStudentForEdit } from "@/lib/actions/admin/student.action";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {

@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { deleteTrainer } from "@/lib/actions/admin/trainer.action";
+import { deleteCourse } from "@/lib/actions/admin/course.action";
 
 type Props = {
   id: string;
@@ -43,7 +43,7 @@ export function RowActions({ id }: Props) {
           <DropdownMenuGroup>
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
 
-            <Link href={`/admin/trainers/edit/${id}`}>
+            <Link href={`/admin/courses/edit/${id}`}>
               <DropdownMenuItem>Edit</DropdownMenuItem>
             </Link>
 
@@ -58,11 +58,11 @@ export function RowActions({ id }: Props) {
         <ConfirmDialog
           open={openDelete}
           onOpenChange={setOpenDelete}
-          title="Delete Trainer?"
-          description="This will remove the trainer from the active records."
+          title="Delete Course?"
+          description="This will remove the course from the active records."
           confirmText="Delete"
-          successMessage="Trainer deleted successfully."
-          onConfirm={() => deleteTrainer(id)}
+          successMessage="Course deleted successfully."
+          onConfirm={() => deleteCourse(id)}
           onSuccess={() => {
             router.refresh();
           }}

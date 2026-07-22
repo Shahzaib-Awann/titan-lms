@@ -1,6 +1,6 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import { getUserForSignin } from "./lib/actions/auth.action";
+import { getUserForSignin } from "./lib/actions/admin/auth.action";
 import { verifyPassword } from "./lib/helpers/password";
 import { SignInFormSchema } from "./lib/zod/schema";
 import type { User } from "next-auth";

@@ -1,6 +1,6 @@
 import { eq, and, isNull } from "drizzle-orm";
-import { db } from "../db";
-import { users } from "../db/schema";
+import { db } from "../../db";
+import { users } from "../../db/schema";
 import { auth } from "@/auth";
 import { Role } from "@/types/common";
 

@@ -1,6 +1,6 @@
 import { DataTable } from "@/components/ui/data-table/data-table";
 import { columns } from "./columns";
-import { getTrainers } from "@/lib/actions/trainer.action";
+import { getTrainers } from "@/lib/actions/admin/trainer.action";
 
 export default async function DemoPage() {
   const data = await getTrainers();

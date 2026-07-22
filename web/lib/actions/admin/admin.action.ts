@@ -8,7 +8,7 @@ import { nanoid } from "nanoid";
 import { eq, isNull, and } from "drizzle-orm";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { uploadAssetAction } from "./asset.action";
+import { uploadAssetAction } from "../asset.action";
 import path from "path";
 import fs from "fs/promises";
 import { requireRole } from "./auth.action";
@@ -90,6 +90,7 @@ export async function getAdminForEdit(id: string) {
     );
   }
 }
+
 /**
  * Create or update admin
  */

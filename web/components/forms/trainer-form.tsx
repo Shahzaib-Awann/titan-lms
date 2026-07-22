@@ -28,7 +28,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { saveTrainer } from "@/lib/actions/trainer.action";
+import { saveTrainer } from "@/lib/actions/admin/trainer.action";
 import toast from "react-hot-toast";
 import { UserStatus } from "@/types/common";
 

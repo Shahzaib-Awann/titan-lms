@@ -43,6 +43,13 @@
       "when": 1784545354346,
       "tag": "0005_misty_killraven",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1784705385614,
+      "tag": "0006_eager_the_twelve",
+      "breakpoints": true
     }
   ]
 }
