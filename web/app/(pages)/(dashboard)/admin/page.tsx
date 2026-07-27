@@ -4,7 +4,6 @@ import AdminStatsGrid from "@/components/pages/admin/page/admin-stats-grid";
 import AdminRecentUsers from "@/components/pages/admin/page/admin-recent-users";
 import AdminQuickActions from "@/components/pages/admin/page/admin-quick-actions";
 import AdminUserDistribution from "@/components/pages/admin/page/admin-user-distribution";
-import { adminUserDistribution } from "@/lib/data/admin.mock";
 import Link from "next/link";
 
 export default function AdminDashboard() {
@@ -48,7 +47,7 @@ export default function AdminDashboard() {
         {/* Right Column - Activity & Overview */}
         <div className="flex flex-col gap-8">
           <AdminQuickActions />
-          <AdminUserDistribution data={adminUserDistribution} />
+          <AdminUserDistribution />
         </div>
       </div>
     </div>

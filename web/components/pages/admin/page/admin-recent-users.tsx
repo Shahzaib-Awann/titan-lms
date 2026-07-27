@@ -15,11 +15,16 @@ import {
 } from "@/components/ui/card";
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { adminRecentUsers } from "@/lib/data/admin.mock";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { getRecentUsers } from "@/lib/actions/admin/dashboard.action";
+import Link from "next/link";
 
-const AdminRecentUsers = () => {
+const AdminRecentUsers = async () => {
+  const result = await getRecentUsers();
+
+  const adminRecentUsers = result.data;
+
   return (
     <Card className="shadow-sm overflow-hidden flex-1">
       <CardHeader className="px-6 py-5 border-b border-border/40 bg-muted/10">
@@ -32,9 +37,11 @@ const AdminRecentUsers = () => {
               Latest users joined the platform
             </CardDescription>
           </div>
-          <Button variant="outline" size="sm" className="rounded-lg h-9">
-            View All
-          </Button>
+          <Link href="/admin/students">
+            <Button variant="outline" size="sm" className="rounded-lg h-9">
+              View All
+            </Button>
+          </Link>
         </div>
       </CardHeader>
       <CardContent className="p-0">

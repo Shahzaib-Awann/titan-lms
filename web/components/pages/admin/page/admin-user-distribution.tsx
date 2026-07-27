@@ -1,18 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getUserDistribution } from "@/lib/actions/admin/dashboard.action";
 
-interface UserDistributionItem {
-  id: string | number;
-  label: string;
-  count: number;
-  percentage: number;
-  color: string;
-}
+const AdminUserDistribution = async () => {
+  const result = await getUserDistribution();
 
-interface AdminUserDistributionProps {
-  data: UserDistributionItem[];
-}
-
-const AdminUserDistribution = ({ data }: AdminUserDistributionProps) => {
+  const data = result.data;
   return (
     <Card className="shadow-sm">
       <CardHeader className="pb-5">

@@ -16,6 +16,7 @@ export const userRoleEnum = mysqlEnum("role", ["admin", "trainer", "student"]);
 export const userStatusEnum = mysqlEnum("status", ["active", "inactive", "suspended"]);
 export const assetExtensionEnum = mysqlEnum("extension", ["pdf", "mp4", "png", "jpg", "jpeg", "md"]);
 export const weekdayEnum = mysqlEnum("weekday", ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"]);
+export const moduleProgressStatusEnum = mysqlEnum("module_progress_status", ["not_started", "in_progress", "completed", "skipped"]);
 
 // Users table
 export const users = mysqlTable("users", {
@@ -139,4 +140,48 @@ export const batchSchedules = mysqlTable("batch_schedules", {
   endTime: time("end_time").notNull(),
 
   room: varchar("room", { length: 100 }),
+});
+
+
+// Course Modules
+export const courseModules = mysqlTable("course_modules", {
+  id: varchar("id", { length: 21 }).primaryKey(),
+
+  courseId: varchar("course_id", { length: 21 }).notNull().references(() => courses.id),
+
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+
+  orderIndex: int("order_index").notNull().default(0),
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+// Course Module Lessons
+export const moduleLessons = mysqlTable("module_lessons", {
+  id: varchar("id", { length: 21 }).primaryKey(),
+
+  moduleId: varchar("module_id", { length: 21 }).notNull().references(() => courseModules.id),
+
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+
+  orderIndex: int("order_index").notNull().default(0),
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+// Module Progress
+export const moduleProgress = mysqlTable("module_progress", {
+  id: varchar("id", { length: 21 }).primaryKey(),
+
+  batchId: varchar("batch_id", { length: 21 }).notNull().references(() => courseBatches.id),
+  lessonId: varchar("lesson_id", { length: 21 }).notNull().references(() => moduleLessons.id),
+
+  status: moduleProgressStatusEnum.notNull().default("not_started"),
+
+  completedAt: timestamp("completed_at"),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });

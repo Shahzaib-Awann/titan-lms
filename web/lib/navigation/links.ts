@@ -18,8 +18,6 @@ import {
   Clock,
   Bookmark,
   UserPlus,
-  PlusCircle,
-  CalendarCheck,
   Layers,
   GraduationCap,
   ClipboardCheck,
@@ -411,15 +409,4 @@ const navConfig: Record<Role, NavItem[]> = {
 export const getNavByRole = (role?: string): NavItem[] =>
   navConfig[role?.toLowerCase() as Role] ?? [];
 
-export const quickActionsForAdmin = [
-  { label: "Add User", icon: UserPlus, url: "/users/create" },
-  { label: "Create Course", icon: PlusCircle, url: "/courses/create" },
-  {
-    label: "Approve Leaves",
-    icon: CalendarCheck,
-    url: "/attendance/approve-leaves",
-  },
-  { label: "Manage Instructors", icon: UserCog, url: "/users/trainers" },
-  { label: "View Reports", icon: FileText, url: "/reports" },
-  { label: "Settings", icon: Settings, url: "/settings" },
-];
+

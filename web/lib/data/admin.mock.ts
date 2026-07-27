@@ -9,36 +9,6 @@ import {
   Users,
 } from "lucide-react";
 
-export const adminStatCards = [
-  {
-    title: "Total Users",
-    value: "12,450",
-    icon: Users,
-    trend: "+12%",
-    color: "text-primary",
-  },
-  {
-    title: "Total Courses",
-    value: "342",
-    icon: BookOpen,
-    trend: "+4%",
-    color: "text-primary",
-  },
-  {
-    title: "Pending Leave Approvals",
-    value: "24",
-    icon: CalendarCheck,
-    trend: "-2",
-    color: "text-amber-500",
-  },
-  {
-    title: "Active Instructors",
-    value: "186",
-    icon: UserCog,
-    trend: "+2",
-    color: "text-emerald-500",
-  },
-];
 
 export const adminRecentUsers = [
   {
