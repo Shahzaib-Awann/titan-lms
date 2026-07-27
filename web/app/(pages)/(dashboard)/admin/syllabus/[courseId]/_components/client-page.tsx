@@ -2,21 +2,34 @@
 
 import React, { useState } from "react";
 import { ModuleWithLessons } from "../_types/syllabus";
-import { SyllabusHeader } from "../_components/syllabus-header";
+import { SyllabusHeader } from "./syllabus-header";
 import { SyllabusDialog } from "./syllabus-dialog";
-import { GripVertical, Pencil, Plus, Trash2 } from "lucide-react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { SyllabusDeleteConfirmDialog } from "./syllabus-delete-confirm-dialog";
-import { Badge } from "@/components/ui/badge";
+import { SortableModuleCard } from "./sortable-module-card";
+import { SyllabusDragOverlay, ActiveDragItem } from "./syllabus-drag-overlay";
+import { createTempId, isTempId } from "@/lib/utils";
+
+// Re-export utility functions to prevent breaking external imports
+export { createTempId, isTempId };
+
+// Dnd Kit Imports
+import {
+  DndContext,
+  closestCorners,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragStartEvent,
+  DragOverEvent,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 
 interface SyllabusClientPageProps {
   initialModules: ModuleWithLessons[];
@@ -27,20 +40,13 @@ interface SyllabusClientPageProps {
   };
 }
 
-export const createTempId = () => {
-  return `temp-${crypto.randomUUID()}`;
-};
-
-export const isTempId = (id?: string | null) => {
-  return id?.startsWith("temp-");
-};
-
 export const SyllabusClientPage = ({
   initialModules,
   course,
 }: SyllabusClientPageProps) => {
   const [open, setOpen] = useState(false);
   const [modules, setModules] = useState(initialModules);
+  const [isDirty, setIsDirty] = useState(false);
   const [lessonModuleId, setLessonModuleId] = useState<string | null>(null);
   const [editingModule, setEditingModule] = useState<ModuleWithLessons | null>(
     null,
@@ -58,6 +64,191 @@ export const SyllabusClientPage = ({
     lessonId?: string | null;
     title: string;
   } | null>(null);
+
+  const [activeItem, setActiveItem] = useState<ActiveDragItem | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
+
+  const findContainer = (id: string) => {
+    if (modules.some((m) => m.id === id)) {
+      return id;
+    }
+    return modules.find((m) => m.lessons.some((l) => l.id === id))?.id;
+  };
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event;
+    const activeData = active.data.current;
+
+    if (activeData?.type === "module") {
+      setActiveItem({ type: "module", module: activeData.module });
+    } else if (activeData?.type === "lesson") {
+      setActiveItem({ type: "lesson", lesson: activeData.lesson });
+    }
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    const { active, over } = event;
+    if (!over) return;
+
+    const activeId = active.id as string;
+    const overId = over.id as string;
+
+    const activeData = active.data.current;
+    const overData = over.data.current;
+
+    if (activeData?.type !== "lesson") return;
+
+    const activeContainer = findContainer(activeId);
+    const overContainer = findContainer(overId);
+
+    if (
+      !activeContainer ||
+      !overContainer ||
+      activeContainer === overContainer
+    ) {
+      return;
+    }
+
+    setModules((prev) => {
+      const activeModule = prev.find((m) => m.id === activeContainer);
+      const overModule = prev.find((m) => m.id === overContainer);
+
+      if (!activeModule || !overModule) return prev;
+
+      const activeLessonIndex = activeModule.lessons.findIndex(
+        (l) => l.id === activeId,
+      );
+      if (activeLessonIndex === -1) return prev;
+
+      const activeLesson = activeModule.lessons[activeLessonIndex];
+
+      let newIndex: number;
+      if (overData?.type === "lesson") {
+        const overLessonIndex = overModule.lessons.findIndex(
+          (l) => l.id === overId,
+        );
+        const isBelowOverItem =
+          over &&
+          active.rect.current.translated &&
+          active.rect.current.translated.top > over.rect.top + over.rect.height;
+
+        const modifier = isBelowOverItem ? 1 : 0;
+        newIndex =
+          overLessonIndex >= 0
+            ? overLessonIndex + modifier
+            : overModule.lessons.length;
+      } else {
+        newIndex = overModule.lessons.length;
+      }
+
+      return prev.map((module) => {
+        if (module.id === activeContainer) {
+          const updatedLessons = module.lessons
+            .filter((l) => l.id !== activeId)
+            .map((l, idx) => ({ ...l, orderIndex: idx }));
+          return { ...module, lessons: updatedLessons };
+        }
+
+        if (module.id === overContainer) {
+          const newLessons = [...module.lessons];
+          newLessons.splice(newIndex, 0, activeLesson);
+          const updatedLessons = newLessons.map((l, idx) => ({
+            ...l,
+            orderIndex: idx,
+          }));
+          return { ...module, lessons: updatedLessons };
+        }
+
+        return module;
+      });
+    });
+
+    setIsDirty(true);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveItem(null);
+
+    if (!over) return;
+
+    const activeId = active.id as string;
+    const overId = over.id as string;
+
+    const activeData = active.data.current;
+
+    if (activeData?.type === "module") {
+      if (activeId !== overId) {
+        setModules((prev) => {
+          const oldIndex = prev.findIndex((m) => m.id === activeId);
+          const newIndex = prev.findIndex((m) => m.id === overId);
+
+          if (oldIndex !== -1 && newIndex !== -1) {
+            const reordered = arrayMove(prev, oldIndex, newIndex);
+            return reordered.map((mod, idx) => ({
+              ...mod,
+              orderIndex: idx,
+            }));
+          }
+          return prev;
+        });
+
+        setIsDirty(true);
+      }
+      return;
+    }
+
+    if (activeData?.type === "lesson") {
+      const activeContainer = findContainer(activeId);
+      const overContainer = findContainer(overId);
+
+      if (
+        activeContainer &&
+        overContainer &&
+        activeContainer === overContainer
+      ) {
+        setModules((prev) => {
+          return prev.map((module) => {
+            if (module.id === activeContainer) {
+              const oldIndex = module.lessons.findIndex(
+                (l) => l.id === activeId,
+              );
+              const newIndex = module.lessons.findIndex((l) => l.id === overId);
+
+              if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
+                const reorderedLessons = arrayMove(
+                  module.lessons,
+                  oldIndex,
+                  newIndex,
+                );
+
+                setIsDirty(true);
+
+                return {
+                  ...module,
+                  lessons: reorderedLessons.map((l, idx) => ({
+                    ...l,
+                    orderIndex: idx,
+                  })),
+                };
+              }
+            }
+            return module;
+          });
+        });
+      }
+    }
+  };
 
   const handleModuleSubmit = (data: {
     id?: string | null;
@@ -88,6 +279,7 @@ export const SyllabusClientPage = ({
       setModules((prev) => [...prev, newModule]);
     }
 
+    setIsDirty(true);
     setEditingModule(null);
   };
 
@@ -120,7 +312,6 @@ export const SyllabusClientPage = ({
         ),
       );
     } else {
-      // Create new lesson
       const newLesson = {
         id: createTempId(),
         title: data.title,
@@ -140,6 +331,7 @@ export const SyllabusClientPage = ({
       );
     }
 
+    setIsDirty(true);
     setLessonModuleId(null);
     setEditingLesson(null);
   };
@@ -177,18 +369,15 @@ export const SyllabusClientPage = ({
     }
 
     setDeleteTarget(null);
+    setIsDirty(true);
   };
 
   const prepareSyllabusPayload = (modules: ModuleWithLessons[]) => {
     return modules.map((module) => ({
       id: isTempId(module.id) ? null : module.id,
-
       title: module.title,
-
       description: module.description,
-
       orderIndex: module.orderIndex,
-
       lessons: module.lessons.map((lesson) => ({
         id: isTempId(lesson.id) ? null : lesson.id,
         title: lesson.title,
@@ -202,7 +391,10 @@ export const SyllabusClientPage = ({
     console.log({ modules });
     const payload = prepareSyllabusPayload(modules);
     console.log("Sending to server:", payload);
+    setIsDirty(false);
   };
+
+  const moduleIds = modules.map((m) => m.id!);
 
   return (
     <div className="space-y-8 pb-10">
@@ -212,6 +404,7 @@ export const SyllabusClientPage = ({
         onCreateModule={() => {
           setOpen(true);
         }}
+        isUnsavedChanges={isDirty}
         onSave={submitHandler}
       />
 
@@ -275,167 +468,52 @@ export const SyllabusClientPage = ({
         onConfirm={handleConfirmDelete}
       />
 
-      {/* Modules */}
-      <section className="space-y-6 max-w-5xl mx-auto">
-        {modules
-          .sort((a, b) => a.orderIndex - b.orderIndex)
-          .map((module) => (
-            <Card key={module.id ?? module.title} className="shadow-sm">
-              {/* Module Header */}
-              <div className="flex items-start justify-between gap-6 p-6">
-                {/* Left Content */}
-                <div className="flex items-start gap-3">
-                  <GripVertical className="mt-1 size-5 shrink-0 text-muted-foreground/75 cursor-grab" />
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCorners}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragEnd={handleDragEnd}
+      >
+        <section className="mx-auto max-w-5xl space-y-6">
+          <SortableContext
+            items={moduleIds}
+            strategy={verticalListSortingStrategy}
+          >
+            {modules.map((module) => (
+              <SortableModuleCard
+                key={module.id ?? module.title}
+                module={module}
+                onEditModule={(m) => setEditingModule(m)}
+                onDeleteModule={(m) =>
+                  setDeleteTarget({
+                    type: "module",
+                    moduleId: m.id,
+                    title: m.title,
+                  })
+                }
+                onAddLesson={(mId) => setLessonModuleId(mId)}
+                onEditLesson={(lesson, mId) =>
+                  setEditingLesson({
+                    ...lesson,
+                    moduleId: mId,
+                  })
+                }
+                onDeleteLesson={(lesson, mId) =>
+                  setDeleteTarget({
+                    type: "lesson",
+                    moduleId: mId,
+                    lessonId: lesson.id,
+                    title: lesson.title,
+                  })
+                }
+              />
+            ))}
+          </SortableContext>
+        </section>
 
-                  <div className="space-y-2">
-                    <h2 className="text-2xl font-bold tracking-tight">
-                      {module.title}
-                    </h2>
-
-                    {module.description && (
-                      <p className="max-w-3xl line-clamp-2 text-muted-foreground">
-                        {module.description}
-                      </p>
-                    )}
-
-                    <Badge variant="info" className="rounded-lg">
-                      {module.lessons.length} lessons
-                    </Badge>
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    onClick={() => setEditingModule(module)}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="text-destructive border border-destructive/25 hover:text-destructive hover:bg-destructive/25"
-                    onClick={() => {
-                      setDeleteTarget({
-                        type: "module",
-                        moduleId: module.id,
-                        title: module.title,
-                      });
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-
-              {/* Lessons */}
-              <div className="rounded-none border-t border-b border-border bg-card">
-                <Table className="">
-                  <TableHeader>
-                    <TableRow className="uppercase bg-muted dark:bg-foreground/5">
-                      <TableHead className="w-15 text-muted-foreground font-semibold text-xs" />
-                      <TableHead className="w-16 text-muted-foreground text-center font-semibold text-xs">
-                        #
-                      </TableHead>
-                      <TableHead className="text-muted-foreground font-semibold text-xs">
-                        Title
-                      </TableHead>
-                      <TableHead className="text-muted-foreground font-semibold text-xs">
-                        Description
-                      </TableHead>
-                      <TableHead className="w-30 text-muted-foreground font-semibold text-xs">
-                        Actions
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-
-                  <TableBody>
-                    {module.lessons
-                      .sort((a, b) => a.orderIndex - b.orderIndex)
-                      .map((lesson, index) => (
-                        <TableRow
-                          key={lesson.id ?? lesson.title}
-                          className="group transition-colors hover:bg-muted/50"
-                        >
-                          {/* Drag Handle */}
-                          <TableCell>
-                            <GripVertical className="size-5 ml-auto cursor-grab text-muted-foreground/75 active:cursor-grabbing" />
-                          </TableCell>
-
-                          {/* Number */}
-                          <TableCell className="text-muted-foreground text-center">
-                            {index + 1}
-                          </TableCell>
-
-                          {/* Title */}
-                          <TableCell>
-                            <p className="font-medium text-sm text-foreground">
-                              {lesson.title}
-                            </p>
-                          </TableCell>
-
-                          {/* Description */}
-                          <TableCell>
-                            <p className="max-w-xl truncate line-clamp-2 text-sm text-muted-foreground">
-                              {lesson.description ||
-                                "No description available."}
-                            </p>
-                          </TableCell>
-
-                          {/* Actions */}
-                          <TableCell>
-                            <div className="flex justify-end gap-2 opacity-0 transition-opacity group-hover:opacity-100">
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                onClick={() => {
-                                  setEditingLesson({
-                                    ...lesson,
-                                    moduleId: module.id!,
-                                  });
-                                }}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="text-destructive hover:text-destructive hover:bg-destructive/25"
-                                onClick={() => {
-                                  setDeleteTarget({
-                                    type: "lesson",
-                                    moduleId: module.id,
-                                    lessonId: lesson.id,
-                                    title: lesson.title,
-                                  });
-                                }}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                  </TableBody>
-                </Table>
-              </div>
-
-              {/* Add Lesson Button */}
-              <Button
-                onClick={() => setLessonModuleId(module.id)}
-                variant="ghost"
-                className="w-fit mx-auto text-primary hover:text-primary "
-              >
-                <Plus className="size-4" />
-                Add Lesson
-              </Button>
-            </Card>
-          ))}
-      </section>
+        <SyllabusDragOverlay activeItem={activeItem} />
+      </DndContext>
     </div>
   );
 };

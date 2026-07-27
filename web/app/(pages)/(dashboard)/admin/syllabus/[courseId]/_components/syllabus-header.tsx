@@ -2,6 +2,7 @@
 
 import React from "react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Plus, Save } from "lucide-react";
 
 interface SyllabusHeaderProps {
@@ -9,6 +10,7 @@ interface SyllabusHeaderProps {
   description: string;
   onCreateModule?: () => void;
   onSave?: () => void;
+  isUnsavedChanges: boolean;
 }
 
 export const SyllabusHeader = ({
@@ -16,6 +18,7 @@ export const SyllabusHeader = ({
   description,
   onCreateModule,
   onSave,
+  isUnsavedChanges,
 }: SyllabusHeaderProps) => {
   return (
     <section className="flex items-start justify-between gap-6 p-6">
@@ -32,7 +35,21 @@ export const SyllabusHeader = ({
 
       {/* Actions */}
       <div className="flex shrink-0 items-center gap-3">
-        <Button variant="outline" onClick={onSave} className="gap-2">
+        {isUnsavedChanges && (
+          <Badge
+            variant="warning"
+            className="gap-1.5 rounded-full border-amber-200 bg-amber-50 px-3 py-1 text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
+          >
+            Unsaved Changes
+          </Badge>
+        )}
+
+        <Button
+          variant={isUnsavedChanges ? "primary" : "outline"}
+          onClick={onSave}
+          className="gap-2"
+          disabled={!isUnsavedChanges}
+        >
           <Save className="h-4 w-4" />
           Save
         </Button>

@@ -1,6 +1,10 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+
 import {
   Dialog,
   DialogContent,
@@ -9,24 +13,31 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
+
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FieldSet,
+} from "@/components/ui/field";
+
 import { BookOpen, FileText } from "lucide-react";
 
-export interface ModuleFormData {
-  id?: string | null;
-  title: string;
-  description: string;
-}
+import { syllabusDialogFormSchema } from "@/lib/zod/admin.schema";
+
+type SyllabusFormValues = z.infer<typeof syllabusDialogFormSchema>;
 
 interface SyllabusDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  data?: ModuleFormData;
+  data?: SyllabusFormValues;
   type: "module" | "lesson";
-  onSubmit: (data: ModuleFormData) => void;
+  onSubmit: (data: SyllabusFormValues) => void;
 }
 
 export const SyllabusDialog = ({
@@ -36,33 +47,37 @@ export const SyllabusDialog = ({
   onSubmit,
   type,
 }: SyllabusDialogProps) => {
-  const [formData, setFormData] = useState<ModuleFormData>({
-    title: "",
-    description: "",
-  });
-
   const isEdit = Boolean(data?.id);
+
+  const form = useForm<SyllabusFormValues>({
+    resolver: zodResolver(syllabusDialogFormSchema),
+    defaultValues: {
+      id: null,
+      title: "",
+      description: "",
+    },
+  });
 
   useEffect(() => {
     if (data) {
-      setFormData({
-        id: data.id,
+      form.reset({
+        id: data.id ?? null,
         title: data.title,
         description: data.description,
       });
     } else {
-      setFormData({
+      form.reset({
+        id: null,
         title: "",
         description: "",
       });
     }
-  }, [data, open]);
+  }, [data, open, form]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    onSubmit(formData);
+  const handleSubmit = (values: SyllabusFormValues) => {
+    onSubmit(values);
     onOpenChange(false);
+    form.reset();
   };
 
   const entity = type === "module" ? "Module" : "Lesson";
@@ -70,7 +85,7 @@ export const SyllabusDialog = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl">
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={form.handleSubmit(handleSubmit)}>
           <DialogHeader className="flex flex-row items-center gap-4 border-b border-border px-4 py-6">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary/10">
               {type === "module" ? (
@@ -94,40 +109,54 @@ export const SyllabusDialog = ({
           </DialogHeader>
 
           <div className="space-y-5 px-5 py-6">
-            <div className="space-y-2">
-              <Label htmlFor="title">
-                {type === "module" ? "Module Title" : "Lesson Title"}
-              </Label>
+            <FieldSet>
+              <FieldGroup>
+                {/* Title */}
+                <Controller
+                  name="title"
+                  control={form.control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
+                      <FieldLabel htmlFor="title">
+                        {type === "module" ? "Module Title" : "Lesson Title"}
+                      </FieldLabel>
 
-              <Input
-                id="title"
-                placeholder="Enter module title"
-                value={formData.title}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    title: e.target.value,
-                  }))
-                }
-              />
-            </div>
+                      <Input
+                        {...field}
+                        id="title"
+                        placeholder={`Enter ${type} title`}
+                      />
 
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
+                      <FieldError
+                        errors={fieldState.error ? [fieldState.error] : []}
+                      />
+                    </Field>
+                  )}
+                />
 
-              <Textarea
-                id="description"
-                placeholder="Enter module description"
-                rows={4}
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    description: e.target.value,
-                  }))
-                }
-              />
-            </div>
+                {/* Description */}
+                <Controller
+                  name="description"
+                  control={form.control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
+                      <FieldLabel htmlFor="description">Description</FieldLabel>
+
+                      <Textarea
+                        {...field}
+                        id="description"
+                        rows={4}
+                        placeholder={`Enter ${type} description`}
+                      />
+
+                      <FieldError
+                        errors={fieldState.error ? [fieldState.error] : []}
+                      />
+                    </Field>
+                  )}
+                />
+              </FieldGroup>
+            </FieldSet>
           </div>
 
           <DialogFooter className="px-4">

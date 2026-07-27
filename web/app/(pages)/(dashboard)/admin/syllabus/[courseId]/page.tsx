@@ -1,6 +1,6 @@
 // app/admin/syllabus/[courseId]/page.tsx
 
-import { SyllabusClientPage } from "./_components/client-page";
+import { DynamicSyllabusLoader } from "./_components/syllabus-page-dynamic-loader";
 import { ModuleWithLessons } from "./_types/syllabus";
 
 interface PageProps {
@@ -12,7 +12,7 @@ interface PageProps {
 export default async function CourseSyllabusPage({ params }: PageProps) {
   const { courseId } = await params;
 
-  // Mock initial data matching Drizzle schema struct
+  // Mock initial data matching Drizzle schema structure
   const initialModules: ModuleWithLessons[] = [
     {
       id: "module-1",
@@ -114,6 +114,9 @@ export default async function CourseSyllabusPage({ params }: PageProps) {
   }
 
   return (
-    <SyllabusClientPage course={courseInfo} initialModules={initialModules} />
+    <DynamicSyllabusLoader
+      course={courseInfo}
+      initialModules={initialModules}
+    />
   );
 }
