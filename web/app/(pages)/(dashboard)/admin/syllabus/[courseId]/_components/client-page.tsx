@@ -9,9 +9,6 @@ import { SortableModuleCard } from "./sortable-module-card";
 import { SyllabusDragOverlay, ActiveDragItem } from "./syllabus-drag-overlay";
 import { createTempId, isTempId } from "@/lib/utils";
 
-// Re-export utility functions to prevent breaking external imports
-export { createTempId, isTempId };
-
 // Dnd Kit Imports
 import {
   DndContext,
@@ -30,6 +27,12 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
+import {
+  deleteSyllabusItem,
+  updateCourseSyllabus,
+} from "@/lib/actions/admin/syllabus.action";
+import toast from "react-hot-toast";
+import { useRouter } from "next/navigation";
 
 interface SyllabusClientPageProps {
   initialModules: ModuleWithLessons[];
@@ -44,6 +47,7 @@ export const SyllabusClientPage = ({
   initialModules,
   course,
 }: SyllabusClientPageProps) => {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [modules, setModules] = useState(initialModules);
   const [isDirty, setIsDirty] = useState(false);
@@ -336,40 +340,69 @@ export const SyllabusClientPage = ({
     setEditingLesson(null);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
 
-    if (deleteTarget.type === "module") {
-      setModules((prev) =>
-        prev
-          .filter((module) => module.id !== deleteTarget.moduleId)
-          .map((module, index) => ({
-            ...module,
-            orderIndex: index,
-          })),
+    try {
+      const id =
+        deleteTarget.type === "module"
+          ? deleteTarget.moduleId
+          : deleteTarget.lessonId;
+
+      /**
+       * Delete from database only if it exists there
+       */
+      if (id && !isTempId(id)) {
+        await deleteSyllabusItem(deleteTarget.type, id, course.id);
+      }
+
+      /**
+       * Update local state
+       */
+      if (deleteTarget.type === "module") {
+        setModules((prev) =>
+          prev
+            .filter((module) => module.id !== deleteTarget.moduleId)
+            .map((module, index) => ({
+              ...module,
+              orderIndex: index,
+            })),
+        );
+      }
+
+      if (deleteTarget.type === "lesson") {
+        setModules((prev) =>
+          prev.map((module) =>
+            module.id === deleteTarget.moduleId
+              ? {
+                  ...module,
+                  lessons: module.lessons
+                    .filter((lesson) => lesson.id !== deleteTarget.lessonId)
+                    .map((lesson, index) => ({
+                      ...lesson,
+                      orderIndex: index,
+                    })),
+                }
+              : module,
+          ),
+        );
+      }
+
+      toast.success(
+        `${deleteTarget.type === "module" ? "Module" : "Lesson"} deleted successfully.`,
+      );
+
+      setDeleteTarget(null);
+      setIsDirty(true);
+    } catch (error) {
+      console.error("Delete syllabus item error:", error);
+
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to delete syllabus item.",
       );
     }
-
-    if (deleteTarget.type === "lesson") {
-      setModules((prev) =>
-        prev.map((module) =>
-          module.id === deleteTarget.moduleId
-            ? {
-                ...module,
-                lessons: module.lessons
-                  .filter((lesson) => lesson.id !== deleteTarget.lessonId)
-                  .map((lesson, index) => ({
-                    ...lesson,
-                    orderIndex: index,
-                  })),
-              }
-            : module,
-        ),
-      );
-    }
-
-    setDeleteTarget(null);
-    setIsDirty(true);
   };
 
   const prepareSyllabusPayload = (modules: ModuleWithLessons[]) => {
@@ -388,10 +421,25 @@ export const SyllabusClientPage = ({
   };
 
   const submitHandler = async () => {
-    console.log({ modules });
-    const payload = prepareSyllabusPayload(modules);
-    console.log("Sending to server:", payload);
-    setIsDirty(false);
+    try {
+      const payload = prepareSyllabusPayload(modules);
+
+      const result = await updateCourseSyllabus(course.id, payload);
+
+      if (result.success) {
+        setIsDirty(false);
+        toast.success("Course syllabus updated successfully.");
+        router.push("/admin/syllabus");
+      }
+    } catch (error) {
+      console.error("Submit syllabus error:", error);
+
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to update course syllabus.",
+      );
+    }
   };
 
   const moduleIds = modules.map((m) => m.id!);
