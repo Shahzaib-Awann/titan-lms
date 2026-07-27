@@ -200,3 +200,51 @@ export const BatchFormSchema = z
       path: ["endDate"],
     },
   );
+
+export const ModuleLessonSchema = z.object({
+  id: z.string().nullable(),
+
+  title: z
+    .string()
+    .min(2, "Lesson title must be at least 2 characters")
+    .max(255, "Lesson title must be less than 255 characters"),
+
+  description: z
+    .string()
+    .max(1000, "Lesson description must be less than 1000 characters")
+    .optional(),
+
+  orderIndex: z
+    .number()
+    .int("Order index must be a whole number")
+    .min(0, "Order index cannot be negative"),
+});
+
+
+export const CourseModuleSchema = z.object({
+  id: z.string().nullable(),
+
+  title: z
+    .string()
+    .min(2, "Module title must be at least 2 characters")
+    .max(255, "Module title must be less than 255 characters"),
+
+  description: z
+    .string()
+    .max(1000, "Module description must be less than 1000 characters")
+    .optional(),
+
+  orderIndex: z
+    .number()
+    .int("Order index must be a whole number")
+    .min(0, "Order index cannot be negative"),
+
+  lessons: z
+    .array(ModuleLessonSchema)
+    .min(1, "Each module must have at least one lesson"),
+});
+
+
+export const SyllabusSchema = z
+  .array(CourseModuleSchema)
+  .min(1, "At least one module is required");
