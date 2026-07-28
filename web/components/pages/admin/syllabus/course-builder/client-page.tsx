@@ -1,13 +1,13 @@
 "use client";
 
 import React, { useState } from "react";
-import { ModuleWithLessons } from "../_types/syllabus";
+import { SyllabusModule } from "@/types/syllabus";
 import { SyllabusHeader } from "./syllabus-header";
 import { SyllabusDialog } from "./syllabus-dialog";
 import { SyllabusDeleteConfirmDialog } from "./syllabus-delete-confirm-dialog";
 import { SortableModuleCard } from "./sortable-module-card";
 import { SyllabusDragOverlay, ActiveDragItem } from "./syllabus-drag-overlay";
-import { createTempId, isTempId } from "@/lib/utils";
+import { createTempId, isTempId } from "@/lib/helpers/temp-id";
 
 // Dnd Kit Imports
 import {
@@ -30,12 +30,12 @@ import {
 import {
   deleteSyllabusItem,
   updateCourseSyllabus,
-} from "@/lib/actions/admin/syllabus.action";
+} from "@/lib/actions/syllabus.action";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 
 interface SyllabusClientPageProps {
-  initialModules: ModuleWithLessons[];
+  initialModules: SyllabusModule[];
   course: {
     id: string;
     title: string;
@@ -52,7 +52,7 @@ export const SyllabusClientPage = ({
   const [modules, setModules] = useState(initialModules);
   const [isDirty, setIsDirty] = useState(false);
   const [lessonModuleId, setLessonModuleId] = useState<string | null>(null);
-  const [editingModule, setEditingModule] = useState<ModuleWithLessons | null>(
+  const [editingModule, setEditingModule] = useState<SyllabusModule | null>(
     null,
   );
   const [editingLesson, setEditingLesson] = useState<{
@@ -272,7 +272,7 @@ export const SyllabusClientPage = ({
         ),
       );
     } else {
-      const newModule: ModuleWithLessons = {
+      const newModule: SyllabusModule = {
         id: createTempId(),
         title: data.title,
         description: data.description,
@@ -405,7 +405,7 @@ export const SyllabusClientPage = ({
     }
   };
 
-  const prepareSyllabusPayload = (modules: ModuleWithLessons[]) => {
+  const prepareSyllabusPayload = (modules: SyllabusModule[]) => {
     return modules.map((module) => ({
       id: isTempId(module.id) ? null : module.id,
       title: module.title,

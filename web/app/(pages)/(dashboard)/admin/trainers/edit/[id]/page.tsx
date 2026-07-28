@@ -1,5 +1,5 @@
 import { TrainerForm } from "@/components/forms/trainer-form";
-import { getTrainerForEdit } from "@/lib/actions/admin/trainer.action";
+import { getTrainerForEdit } from "@/lib/actions/trainer.action";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {

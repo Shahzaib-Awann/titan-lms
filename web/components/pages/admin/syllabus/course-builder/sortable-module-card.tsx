@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { ModuleWithLessons, Lesson } from "../_types/syllabus";
+import { SyllabusModule, SyllabusLesson } from "@/types/syllabus";
 import { SortableLessonRow } from "./sortable-lesson-row";
 import {
   GripVertical,
@@ -30,12 +30,12 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 
 interface SortableModuleCardProps {
-  module: ModuleWithLessons;
-  onEditModule: (module: ModuleWithLessons) => void;
-  onDeleteModule: (module: ModuleWithLessons) => void;
+  module: SyllabusModule;
+  onEditModule: (module: SyllabusModule) => void;
+  onDeleteModule: (module: SyllabusModule) => void;
   onAddLesson: (moduleId: string) => void;
-  onEditLesson: (lesson: Lesson, moduleId: string) => void;
-  onDeleteLesson: (lesson: Lesson, moduleId: string) => void;
+  onEditLesson: (lesson: SyllabusLesson, moduleId: string) => void;
+  onDeleteLesson: (lesson: SyllabusLesson, moduleId: string) => void;
 }
 
 export const SortableModuleCard = ({

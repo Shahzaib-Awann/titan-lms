@@ -2,14 +2,14 @@
 
 import React from "react";
 import { DragOverlay } from "@dnd-kit/core";
-import { ModuleWithLessons, Lesson } from "../_types/syllabus";
+import { SyllabusModule, SyllabusLesson } from "@/types/syllabus";
 import { Card } from "@/components/ui/card";
 import { GripVertical } from "lucide-react";
 
 export interface ActiveDragItem {
   type: "module" | "lesson";
-  module?: ModuleWithLessons;
-  lesson?: Lesson;
+  module?: SyllabusModule;
+  lesson?: SyllabusLesson;
 }
 
 interface SyllabusDragOverlayProps {

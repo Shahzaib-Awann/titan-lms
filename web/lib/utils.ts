@@ -14,11 +14,3 @@ export function getAvatarInitials(name?: string | null): string {
     ? parts[0][0].toUpperCase()
     : `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 }
-
-export const createTempId = (): string => {
-  return `temp-${crypto.randomUUID()}`;
-};
-
-export const isTempId = (id?: string | null): boolean => {
-  return Boolean(id?.startsWith("temp-"));
-};

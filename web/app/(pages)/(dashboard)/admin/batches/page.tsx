@@ -1,5 +1,5 @@
 import { DataTable } from "@/components/ui/data-table/data-table";
-import { getCourseBatches } from "@/lib/actions/admin/batch.action";
+import { getCourseBatches } from "@/lib/actions/batch.action";
 import { columns } from "./columns";
 
 const BatchesPage = async () => {

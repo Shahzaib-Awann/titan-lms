@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { getAdminStats } from "@/lib/actions/admin/dashboard.action";
+import { getAdminStats } from "@/lib/actions/dashboard.action";
 import { BookOpen, CalendarCheck, UserCog, Users } from "lucide-react";
 
 const AdminStatsGrid = async () => {
@@ -12,14 +12,14 @@ const AdminStatsGrid = async () => {
   const adminStatCards = [
     {
       title: "Total Users",
-      value: stats.data.totalUsers.toLocaleString(),
+      value: stats.data.usersCount,
       icon: Users,
       status: "Current count",
       color: "text-primary",
     },
     {
       title: "Total Courses",
-      value: stats.data.totalCourses.toLocaleString(),
+      value: stats.data.coursesCount,
       icon: BookOpen,
       status: "Current count",
       color: "text-primary",
@@ -33,7 +33,7 @@ const AdminStatsGrid = async () => {
     },
     {
       title: "Active Instructors",
-      value: stats.data.activeInstructors.toLocaleString(),
+      value: stats.data.activeInstructorsCount,
       icon: UserCog,
       status: "Currently active",
       color: "text-emerald-500",

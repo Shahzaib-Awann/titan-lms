@@ -17,7 +17,7 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { getRecentUsers } from "@/lib/actions/admin/dashboard.action";
+import { getRecentUsers } from "@/lib/actions/dashboard.action";
 import Link from "next/link";
 
 const AdminRecentUsers = async () => {
@@ -73,7 +73,7 @@ const AdminRecentUsers = async () => {
                     <div className="flex flex-col">
                       <span className="font-medium">{user.name}</span>
                       <span className="text-xs text-muted-foreground">
-                        {user.email}
+                        {user.cnic}
                       </span>
                     </div>
                   </div>

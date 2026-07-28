@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
-import { saveCourseBatch } from "@/lib/actions/admin/batch.action";
+import { saveCourseBatch } from "@/lib/actions/batch.action";
 import { format } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Calendar } from "../ui/calendar";

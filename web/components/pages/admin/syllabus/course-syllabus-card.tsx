@@ -16,10 +16,10 @@ import {
   ChartBar,
 } from "lucide-react";
 import Link from "next/link";
-import { CourseSyllabus } from "../_data/mock-data";
+import { CourseSyllabusSummary } from "@/types/syllabus";
 
 interface CourseSyllabusCardProps {
-  course: CourseSyllabus;
+  course: CourseSyllabusSummary;
 }
 
 export function CourseSyllabusCard({ course }: CourseSyllabusCardProps) {
@@ -55,7 +55,7 @@ export function CourseSyllabusCard({ course }: CourseSyllabusCardProps) {
               <LayoutList className="size-3.5 text-muted-foreground/60" />
               <span>
                 <span className="font-medium text-foreground">
-                  {course.totalModules}
+                  {course.moduleCount}
                 </span>{" "}
                 modules
               </span>
@@ -64,7 +64,7 @@ export function CourseSyllabusCard({ course }: CourseSyllabusCardProps) {
               <PlayCircle className="size-3.5 text-muted-foreground/60" />
               <span>
                 <span className="font-medium text-foreground">
-                  {course.totalLessons}
+                  {course.lessonCount}
                 </span>{" "}
                 lessons
               </span>

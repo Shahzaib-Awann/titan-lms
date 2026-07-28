@@ -1,16 +1,106 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { courseModules, courses, moduleLessons, moduleProgress } from "@/lib/db/schema";
-import { asc, eq, inArray } from "drizzle-orm";
+import { courseBatches, courseModules, courses, moduleLessons, moduleProgress } from "@/lib/db/schema";
+import { and, asc, count, eq, gte, inArray, isNull, lte } from "drizzle-orm";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { SyllabusSchema } from "@/lib/zod/admin.schema";
-import { ModuleWithLessons } from "@/app/(pages)/(dashboard)/admin/syllabus/[courseId]/_types/syllabus";
 import { nanoid } from "nanoid";
+import { SyllabusModule } from "@/types/syllabus";
+import { requireRole } from "./auth.action";
 
+/**
+ * Fetch syllabus statistics for stats cards
+ */
+export async function getSyllabusStats() {
+  try {
+
+    const today = new Date();
+
+    const [
+      [courseStats],
+      [moduleStats],
+      [lessonStats],
+      [batchStats],
+    ] = await Promise.all([
+
+      // Count active courses
+      db
+        .select({
+          courseCount: count(courses.id),
+        })
+        .from(courses)
+        .where(isNull(courses.deletedAt)),
+
+      // Count modules from active courses
+      db
+        .select({
+          moduleCount: count(courseModules.id),
+        })
+        .from(courseModules)
+        .innerJoin(
+          courses,
+          eq(courseModules.courseId, courses.id),
+        )
+        .where(isNull(courses.deletedAt)),
+
+      // Count lessons from active courses
+      db
+        .select({
+          lessonCount: count(moduleLessons.id),
+        })
+        .from(moduleLessons)
+        .innerJoin(
+          courseModules,
+          eq(moduleLessons.moduleId, courseModules.id),
+        )
+        .innerJoin(
+          courses,
+          eq(courseModules.courseId, courses.id),
+        )
+        .where(isNull(courses.deletedAt)),
+
+      // Count currently active batches
+      db
+        .select({
+          activeBatches: count(courseBatches.id),
+        })
+        .from(courseBatches)
+        .where(
+          and(
+            isNull(courseBatches.deletedAt),
+            lte(courseBatches.startDate, today),
+            gte(courseBatches.endDate, today),
+          ),
+        ),
+    ]);
+
+    return {
+      courseCount: Number(courseStats.courseCount),
+      moduleCount: Number(moduleStats.moduleCount),
+      lessonCount: Number(lessonStats.lessonCount),
+      activeBatches: Number(batchStats.activeBatches),
+    };
+  } catch (error) {
+    console.error("getSyllabusStats Error:", error);
+
+    throw new Error(
+      error instanceof Error
+        ? error.message
+        : "Failed to fetch syllabus statistics.",
+    );
+  }
+}
+
+/**
+ * Fetch course syllabus with modules and lessons
+ */
 export async function getCourseSyllabus(courseId: string) {
   try {
+    await requireRole("admin");
+
+    // Fetch course information
     const [course] = await db
       .select({
         id: courses.id,
@@ -18,7 +108,7 @@ export async function getCourseSyllabus(courseId: string) {
         description: courses.description,
       })
       .from(courses)
-      .where(eq(courses.id, courseId))
+      .where(and(eq(courses.id, courseId), isNull(courses.deletedAt)))
       .limit(1);
 
 
@@ -26,7 +116,7 @@ export async function getCourseSyllabus(courseId: string) {
       throw new Error("Course not found.");
     }
 
-
+    // Fetch modules and lessons ordered by sequence
     const modules = await db
       .select({
         id: courseModules.id,
@@ -42,10 +132,7 @@ export async function getCourseSyllabus(courseId: string) {
       .from(courseModules)
       .leftJoin(
         moduleLessons,
-        eq(
-          moduleLessons.moduleId,
-          courseModules.id,
-        ),
+        eq(moduleLessons.moduleId, courseModules.id),
       )
       .where(
         eq(courseModules.courseId, courseId),
@@ -56,17 +143,15 @@ export async function getCourseSyllabus(courseId: string) {
       );
 
 
-    const syllabus: ModuleWithLessons[] = [];
+    // Group lessons under their modules
+    const moduleMap = new Map<string, SyllabusModule>();
 
 
     for (const row of modules) {
-      let existingModule = syllabus.find(
-        (item) => item.id === row.id,
-      );
+      let courseModule = moduleMap.get(row.id);
 
-
-      if (!existingModule) {
-        existingModule = {
+      if (!courseModule) {
+        courseModule = {
           id: row.id,
           title: row.title,
           description: row.description,
@@ -74,12 +159,12 @@ export async function getCourseSyllabus(courseId: string) {
           lessons: [],
         };
 
-        syllabus.push(existingModule);
+        moduleMap.set(row.id, courseModule);
       }
 
-
+      // Add lesson to module
       if (row.lessonId) {
-        existingModule.lessons.push({
+        courseModule.lessons.push({
           id: row.lessonId,
           title: row.lessonTitle!,
           description: row.lessonDescription ?? null,
@@ -88,7 +173,6 @@ export async function getCourseSyllabus(courseId: string) {
       }
     }
 
-
     return {
       courseInfo: {
         id: course.id,
@@ -96,7 +180,7 @@ export async function getCourseSyllabus(courseId: string) {
         description: course.description ?? "No description available.",
       },
 
-      modules: syllabus,
+      modules: Array.from(moduleMap.values()),
     };
 
 
@@ -114,38 +198,31 @@ export async function getCourseSyllabus(courseId: string) {
   }
 }
 
+/**
+ * Update course syllabus with modules and lessons
+ */
 export async function updateCourseSyllabus(
   courseId: string,
-  modules: ModuleWithLessons[],
+  modules: SyllabusModule[],
 ) {
   try {
-    // Validate input
+
+    await requireRole("admin");
+
+    // Validate syllabus payload
     const validatedModules = SyllabusSchema.parse(modules);
 
     return await db.transaction(async (tx) => {
       const results = [];
 
+      /**
+       * Handle module creation and updates
+       */
       for (const courseModule of validatedModules) {
         let moduleId = courseModule.id;
 
-        /**
-         * Update existing module
-         */
+        // Update existing module
         if (courseModule.id) {
-          const [existingModule] = await tx
-            .select({
-              id: courseModules.id,
-            })
-            .from(courseModules)
-            .where(eq(courseModules.id, courseModule.id))
-            .limit(1);
-
-          if (!existingModule) {
-            throw new Error(
-              `Module with id ${courseModule.id} not found.`,
-            );
-          }
-
           await tx
             .update(courseModules)
             .set({
@@ -156,9 +233,7 @@ export async function updateCourseSyllabus(
             .where(eq(courseModules.id, courseModule.id));
         }
 
-        /**
-         * Create new module
-         */
+        // Create new module
         else {
           const newModuleId = nanoid();
 
@@ -173,30 +248,12 @@ export async function updateCourseSyllabus(
           moduleId = newModuleId;
         }
 
-
         /**
-         * Handle lessons
+         * Handle lesson creation and updates
          */
         for (const lesson of courseModule.lessons) {
-          /**
-           * Update existing lesson
-           */
+          // Update existing lesson
           if (lesson.id) {
-            const [existingLesson] = await tx
-              .select({
-                id: moduleLessons.id,
-              })
-              .from(moduleLessons)
-              .where(eq(moduleLessons.id, lesson.id))
-              .limit(1);
-
-            if (!existingLesson) {
-              throw new Error(
-                `Lesson with id ${lesson.id} not found.`,
-              );
-            }
-
-
             await tx
               .update(moduleLessons)
               .set({
@@ -206,21 +263,20 @@ export async function updateCourseSyllabus(
                 orderIndex: lesson.orderIndex,
               })
               .where(eq(moduleLessons.id, lesson.id));
+
+            continue;
           }
 
-
-          /**
-           * Create new lesson
-           */
-          else {
-            await tx.insert(moduleLessons).values({
+          // Create new lesson
+          await tx
+            .insert(moduleLessons)
+            .values({
               id: nanoid(),
               moduleId: moduleId!,
               title: lesson.title,
               description: lesson.description ?? null,
               orderIndex: lesson.orderIndex,
             });
-          }
         }
 
 
@@ -230,9 +286,8 @@ export async function updateCourseSyllabus(
         });
       }
 
-
       revalidatePath(`/admin/syllabus`);
-
+      revalidatePath(`/admin/syllabus/${courseId}`);
 
       return {
         success: true,
@@ -260,79 +315,58 @@ export async function updateCourseSyllabus(
 }
 }
 
+/**
+ * Delete syllabus module or lesson
+ */
 export async function deleteSyllabusItem(
   type: "module" | "lesson",
   id: string,
   courseId: string,
 ) {
   try {
-    return await db.transaction(async (tx) => {
 
+    await requireRole("admin");
+
+    return await db.transaction(async (tx) => {
       /**
-       * Delete lesson
+       * Delete lesson and related progress
        */
       if (type === "lesson") {
-
-        // Delete related progress first
+        // Delete lesson progress records
         await tx
           .delete(moduleProgress)
           .where(
-            eq(
-              moduleProgress.lessonId,
-              id,
-            ),
+            eq(moduleProgress.lessonId, id),
           );
 
-
-        // Delete lesson
+        // Delete lesson record
         await tx
           .delete(moduleLessons)
           .where(
-            eq(
-              moduleLessons.id,
-              id,
-            ),
+            eq(moduleLessons.id, id),
           );
-
-        revalidatePath("/admin/syllabus");
-        revalidatePath(`/admin/syllabus/${courseId}`);
-
-
-        return {
-          success: true,
-          type,
-          id,
-        };
       }
 
-
       /**
-       * Delete module
+       * Delete module and all related lessons
        */
-      if (type === "module") {
-
-        // Find module lessons
+      else if (type === "module") {
+        // Fetch module lessons
         const lessons = await tx
           .select({
             id: moduleLessons.id,
           })
           .from(moduleLessons)
           .where(
-            eq(
-              moduleLessons.moduleId,
-              id,
-            ),
+            eq(moduleLessons.moduleId, id),
           );
 
-
         const lessonIds = lessons.map(
-          (lesson) => lesson.id,
+          ({ id }) => id,
         );
 
-
-        // Delete progress for all lessons
-        if (lessonIds.length > 0) {
-
+        // Delete progress for module lessons
+        if (lessonIds.length) {
           await tx
             .delete(moduleProgress)
             .where(
@@ -342,8 +376,7 @@ export async function deleteSyllabusItem(
               ),
             );
 
-
-          // Delete lessons
+          // Delete module lessons
           await tx
             .delete(moduleLessons)
             .where(
@@ -354,37 +387,27 @@ export async function deleteSyllabusItem(
             );
         }
 
-
-        // Delete module
+        // Delete module record
         await tx
           .delete(courseModules)
           .where(
-            eq(
-              courseModules.id,
-              id,
-            ),
+            eq(courseModules.id, id),
           );
-
-
-        revalidatePath("/admin/syllabus");
-        revalidatePath(`/admin/syllabus/${courseId}`);
-
-        return {
-          success: true,
-          type,
-          id,
-        };
       }
 
+      // Handle invalid delete type
+      else {
+        throw new Error("Invalid delete type.");
+      }
 
-      throw new Error("Invalid delete type.");
+      // Refresh syllabus pages
+      revalidatePath("/admin/syllabus");
+      revalidatePath(`/admin/syllabus/${courseId}`);
+
+      return { success: true, type, id };
     });
-
   } catch (error) {
-    console.error(
-      "deleteSyllabusItem Error:",
-      error,
-    );
+    console.error("deleteSyllabusItem Error:", error);
 
     throw new Error(
       error instanceof Error

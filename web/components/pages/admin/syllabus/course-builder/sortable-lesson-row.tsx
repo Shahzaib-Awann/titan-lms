@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Lesson } from "../_types/syllabus";
+import { SyllabusLesson } from "@/types/syllabus";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { GripVertical, Pencil, Trash2 } from "lucide-react";
@@ -9,11 +9,11 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
 interface SortableLessonRowProps {
-  lesson: Lesson;
+  lesson: SyllabusLesson;
   index: number;
   moduleId: string;
-  onEdit: (lesson: Lesson) => void;
-  onDelete: (lesson: Lesson) => void;
+  onEdit: (lesson: SyllabusLesson) => void;
+  onDelete: (lesson: SyllabusLesson) => void;
 }
 
 export const SortableLessonRow = ({

@@ -1,10 +1,12 @@
-import { SyllabusStatsCards } from "./_components/syllabus-stats-cards";
-import { SyllabusCourseList } from "./_components/syllabus-course-list";
-import { mockCourses, computeStats } from "./_data/mock-data";
-import { SyllabusFilters } from "./_components/syllabus-filters";
+import { SyllabusStatsCards } from "@/components/pages/admin/syllabus/syllabus-stats-cards";
+import { SyllabusCourseList } from "@/components/pages/admin/syllabus/syllabus-course-list";
+import { mockCourses } from "@/lib/data/syllabus.mock";
+import { SyllabusFilters } from "@/components/pages/admin/syllabus/syllabus-filters";
+import { getSyllabusStats } from "@/lib/actions/syllabus.action";
+import { Suspense } from "react";
 
-export default function SyllabusPage() {
-  const stats = computeStats(mockCourses);
+export default async function SyllabusPage() {
+  const stats = await getSyllabusStats();
 
   return (
     <div className="flex flex-col gap-8 p-6 lg:p-8 max-w-[1600px] mx-auto w-full animate-in fade-in duration-500">
@@ -27,7 +29,9 @@ export default function SyllabusPage() {
       {/* Stats Overview */}
       <SyllabusStatsCards stats={stats} />
 
-      <SyllabusFilters />
+      <Suspense fallback={<div>Loading...</div>}>
+        <SyllabusFilters />
+      </Suspense>
 
       {/* Course List with Filters */}
       <SyllabusCourseList courses={mockCourses} />

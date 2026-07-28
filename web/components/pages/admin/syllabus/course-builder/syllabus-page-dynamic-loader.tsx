@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { ModuleWithLessons } from "../_types/syllabus";
+import { SyllabusModule } from "@/types/syllabus";
 
 const SyllabusClientPage = dynamic(
   () =>
@@ -24,7 +24,7 @@ interface Props {
     title: string;
     description: string;
   };
-  initialModules: ModuleWithLessons[];
+  initialModules: SyllabusModule[];
 }
 
 export function DynamicSyllabusLoader({ course, initialModules }: Props) {

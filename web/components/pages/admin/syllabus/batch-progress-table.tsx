@@ -12,10 +12,10 @@ import {
   ProgressValue,
 } from "@/components/ui/progress";
 import { Calendar, Users } from "lucide-react";
-import { BatchProgress } from "../_data/mock-data";
+import { SyllabusBatchProgress } from "@/types/syllabus";
 
 interface BatchProgressTableProps {
-  batches: BatchProgress[];
+  batches: SyllabusBatchProgress[];
 }
 
 export function BatchProgressTable({ batches }: BatchProgressTableProps) {
@@ -66,12 +66,12 @@ export function BatchProgressTable({ batches }: BatchProgressTableProps) {
             </TableCell>
 
             <TableCell>
-              <MetaItem icon={Users} value={`${batch.students} Students`} />
+              <MetaItem icon={Users} value={`${batch.studentCount} Students`} />
             </TableCell>
 
             <TableCell className="w-72">
               <Progress
-                value={batch.progress}
+                value={batch.progressPercentage}
                 variant="green"
                 className="w-full"
               >

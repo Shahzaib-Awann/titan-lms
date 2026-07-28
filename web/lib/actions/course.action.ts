@@ -7,7 +7,7 @@ import { z } from "zod";
 
 import { db } from "@/lib/db";
 import { assets, courseBatches, courses, users } from "@/lib/db/schema";
-import { requireRole } from "@/lib/actions/admin/auth.action";
+import { requireRole } from "@/lib/actions/auth.action";
 import { CourseFormSchema } from "@/lib/zod/admin.schema";
 
 /**

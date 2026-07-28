@@ -2,7 +2,7 @@ import { BatchForm } from "@/components/forms/batch-form";
 import {
   getActiveCoursesOptions,
   getActiveTrainerOptions,
-} from "@/lib/actions/admin/batch.action";
+} from "@/lib/actions/batch.action";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {

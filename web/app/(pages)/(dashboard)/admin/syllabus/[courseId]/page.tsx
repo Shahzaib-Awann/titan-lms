@@ -1,7 +1,7 @@
 // app/admin/syllabus/[courseId]/page.tsx
 
-import { getCourseSyllabus } from "@/lib/actions/admin/syllabus.action";
-import { DynamicSyllabusLoader } from "./_components/syllabus-page-dynamic-loader";
+import { getCourseSyllabus } from "@/lib/actions/syllabus.action";
+import { DynamicSyllabusLoader } from "@/components/pages/admin/syllabus/course-builder/syllabus-page-dynamic-loader";
 
 interface PageProps {
   params: Promise<{

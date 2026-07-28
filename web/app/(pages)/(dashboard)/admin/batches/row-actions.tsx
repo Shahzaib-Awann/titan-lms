@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { deleteCourseBatch } from "@/lib/actions/admin/batch.action";
+import { deleteCourseBatch } from "@/lib/actions/batch.action";
 
 type Props = {
   id: string;

@@ -2,10 +2,10 @@
 
 import { CourseSyllabusCard } from "./course-syllabus-card";
 import { EmptyState } from "./empty-state";
-import { CourseSyllabus } from "../_data/mock-data";
+import { CourseSyllabusSummary } from "@/types/syllabus";
 
 interface SyllabusCourseListProps {
-  courses: CourseSyllabus[];
+  courses: CourseSyllabusSummary[];
 }
 
 export function SyllabusCourseList({ courses }: SyllabusCourseListProps) {

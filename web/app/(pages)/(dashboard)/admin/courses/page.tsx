@@ -1,6 +1,6 @@
 import { DataTable } from "@/components/ui/data-table/data-table";
 import { columns } from "./columns";
-import { getCourses } from "@/lib/actions/admin/course.action";
+import { getCourses } from "@/lib/actions/course.action";
 
 export default async function CoursesPage() {
   const data = await getCourses();

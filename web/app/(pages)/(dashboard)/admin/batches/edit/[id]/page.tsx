@@ -3,7 +3,7 @@ import {
   getActiveCoursesOptions,
   getActiveTrainerOptions,
   getCourseBatchForEdit,
-} from "@/lib/actions/admin/batch.action";
+} from "@/lib/actions/batch.action";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {

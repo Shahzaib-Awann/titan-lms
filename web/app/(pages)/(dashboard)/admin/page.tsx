@@ -26,7 +26,7 @@ export default function AdminDashboard() {
 
           <div className="flex flex-wrap gap-4">
             <Link
-              href="/student/create"
+              href="/admin/students/create"
               className="h-12 flex items-center gap-1 rounded-xl bg-white px-6 font-semibold text-[#7658FF] shadow-sm transition-all hover:scale-[1.02] hover:bg-white/90"
             >
               <PlusCircle className="mr-2 h-5 w-5" />

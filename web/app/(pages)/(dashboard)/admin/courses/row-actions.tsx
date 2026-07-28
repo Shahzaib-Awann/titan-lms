@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { deleteCourse } from "@/lib/actions/admin/course.action";
+import { deleteCourse } from "@/lib/actions/course.action";
 
 type Props = {
   id: string;

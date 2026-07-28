@@ -13,7 +13,7 @@ import toast from "react-hot-toast";
 import { Loader2 } from "lucide-react";
 import z from "zod";
 import { Textarea } from "../ui/textarea";
-import { saveCourse } from "@/lib/actions/admin/course.action";
+import { saveCourse } from "@/lib/actions/course.action";
 
 type CourseFormValues = z.infer<typeof CourseFormSchema>;
 

@@ -98,16 +98,6 @@ export const adminNav: NavItem[] = [
     title: "Syllabus",
     url: "/admin/syllabus",
     icon: Layers,
-    children: [
-      {
-        title: "Syllabus",
-        url: "/admin/syllabus/syllabus",
-      },
-      {
-        title: "Topics",
-        url: "/admin/syllabus/topics",
-      },
-    ],
   },
 
   {
