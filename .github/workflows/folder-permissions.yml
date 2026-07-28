@@ -56,7 +56,7 @@ jobs:
                 ;;
 
               hasnainyaqub)
-                if [[ "$FILE" == ".github/"* ]] || [[ "$FILE" == "web/"* ]] || [[ "$FILE" == "core/"* ]]; then
+                if [[ "$FILE" == ".github/"* ]] || [[ "$FILE" == "web/"* ]]; then
                   echo ""
                   echo "❌ Hassnain cannot modify: $FILE"
                   echo "Allowed: repository root + /intelligence"
@@ -64,18 +64,9 @@ jobs:
                 fi
                 ;;
 
-              m-adil-dev)
-                if [[ "$FILE" == ".github/"* ]] || [[ "$FILE" == "web/"* ]] || [[ "$FILE" == "intelligence/"* ]]; then
-                  echo ""
-                  echo "❌ Adil cannot modify: $FILE"
-                  echo "Allowed: repository root + /core"
-                  exit 1
-                fi
-                ;;
-
               *)
                 # Unknown users can only modify root files (like README.md)
-                if [[ "$FILE" == ".github/"* ]] || [[ "$FILE" == "web/"* ]] || [[ "$FILE" == "core/"* ]] || [[ "$FILE" == "intelligence/"* ]]; then
+                if [[ "$FILE" == ".github/"* ]] || [[ "$FILE" == "web/"* ]] || [[ "$FILE" == "intelligence/"* ]]; then
                   echo ""
                   echo "❌ Unauthorized contributor ($AUTHOR) modifying protected directory:"
                   echo "$FILE"
