@@ -1,3 +1,5 @@
+"use server";
+
 import { eq, and, isNull } from "drizzle-orm";
 import { db } from "../db";
 import { users } from "../db/schema";

@@ -18,6 +18,7 @@ import { requireRole } from "./auth.action";
  */
 export async function getAdmins() {
   try {
+
     return await db.transaction(async (tx) => {
       return await tx
         .select({
@@ -90,6 +91,7 @@ export async function getAdminForEdit(id: string) {
     );
   }
 }
+
 /**
  * Create or update admin
  */

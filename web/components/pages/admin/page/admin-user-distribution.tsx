@@ -1,18 +1,41 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getUserDistribution } from "@/lib/actions/dashboard.action";
 
-interface UserDistributionItem {
-  id: string | number;
-  label: string;
-  count: number;
-  percentage: number;
-  color: string;
-}
+const AdminUserDistribution = async () => {
+  const result = await getUserDistribution();
 
-interface AdminUserDistributionProps {
-  data: UserDistributionItem[];
-}
+  const distribution = result.data;
 
-const AdminUserDistribution = ({ data }: AdminUserDistributionProps) => {
+  const totalUsers =
+    distribution.admin + distribution.trainer + distribution.student;
+
+  const getPercentage = (value: number) =>
+    totalUsers === 0 ? 0 : Math.round((value / totalUsers) * 100);
+
+  const data = [
+    {
+      id: "admin",
+      label: "Admins",
+      count: distribution.admin,
+      percentage: getPercentage(distribution.admin),
+      color: "#7658FF",
+    },
+    {
+      id: "trainer",
+      label: "Trainers",
+      count: distribution.trainer,
+      percentage: getPercentage(distribution.trainer),
+      color: "#22C55E",
+    },
+    {
+      id: "student",
+      label: "Students",
+      count: distribution.student,
+      percentage: getPercentage(distribution.student),
+      color: "#F59E0B",
+    },
+  ];
+
   return (
     <Card className="shadow-sm">
       <CardHeader className="pb-5">

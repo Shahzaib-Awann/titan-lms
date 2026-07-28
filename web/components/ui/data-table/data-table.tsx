@@ -62,11 +62,33 @@ export function DataTable<TData, TValue>({
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
 
+  const isObject = (value: unknown): value is Record<string, unknown> => {
+    return typeof value === "object" && value !== null;
+  };
+
+  const getNestedValue = (obj: unknown, path: string): unknown => {
+    return path.split(".").reduce<unknown>((acc, key) => {
+      if (!isObject(acc)) {
+        return undefined;
+      }
+
+      return acc[key];
+    }, obj);
+  };
+
   const globalFilterFn: FilterFn<TData> = (row, _columnId, value) => {
     const search = String(value).toLowerCase();
 
     return globalFilterColumns.some((column) => {
-      const cellValue = row.getValue(column);
+      const cellValue = getNestedValue(row.original, column);
+
+      if (cellValue === null || cellValue === undefined) {
+        return false;
+      }
+
+      if (Array.isArray(cellValue)) {
+        return JSON.stringify(cellValue).toLowerCase().includes(search);
+      }
 
       return String(cellValue).toLowerCase().includes(search);
     });

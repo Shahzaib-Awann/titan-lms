@@ -4,120 +4,162 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { assets } from "@/lib/db/schema";
 import { nanoid } from "nanoid";
-import path from "path";
-import fs from "fs/promises";
+import {
+  removeUploadedFile,
+  saveUploadedFile,
+} from "@/lib/helpers/upload";
 
-const ALLOWED_EXTENSIONS = ["png", "jpg", "jpeg", "pdf", "mp4", "md"] as const;
+const ALLOWED_FILES = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  pdf: "application/pdf",
+  mp4: "video/mp4",
+  md: "text/markdown",
+} as const;
 
-type Extension = (typeof ALLOWED_EXTENSIONS)[number];
+type Extension = keyof typeof ALLOWED_FILES;
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 /**
- * Upload file and create asset record safely.
- * If database insertion fails, uploaded file is removed.
+ * Validate uploaded file
  */
-export async function uploadAssetAction(file: File, folderPath?: string) {
+function validateFile(file: File): Extension {
+  if (!file) {
+    throw new Error("No file provided.");
+  }
+
+  if (file.size === 0) {
+    throw new Error("File is empty.");
+  }
+
+  if (file.size > MAX_FILE_SIZE) {
+    throw new Error("File size exceeds the 5MB limit.");
+  }
+
+  const extension = file.name
+    .split(".")
+    .pop()
+    ?.toLowerCase();
+
+  if (
+    !extension ||
+    !(extension in ALLOWED_FILES)
+  ) {
+    throw new Error("Unsupported file type.");
+  }
+
+  const allowedMime =
+    ALLOWED_FILES[extension as Extension];
+
+  if (file.type !== allowedMime) {
+    throw new Error(
+      "File content does not match its extension.",
+    );
+  }
+
+  return extension as Extension;
+}
+
+/**
+ * Sanitize upload folder path
+ */
+function sanitizeFolderPath(folderPath?: string) {
+  if (!folderPath) {
+    return undefined;
+  }
+
+  return folderPath
+    .replace(/\.\./g, "")
+    .replace(/^\/+|\/+$/g, "");
+}
+
+/**
+ * Upload asset file and save metadata
+ */
+export async function uploadAssetAction(
+  file: File,
+  folderPath?: string,
+) {
   let uploadedFilePath: string | null = null;
 
   try {
     const session = await auth();
 
     if (!session?.user?.id) {
-      throw new Error("Unauthorized");
+      throw new Error("Unauthorized.");
     }
 
-    if (!file) {
-      throw new Error("No file provided.");
-    }
+    const extension = validateFile(file);
 
-    const extension = file.name.split(".").pop()?.toLowerCase();
+    const safeFolderPath =
+      sanitizeFolderPath(folderPath);
 
-    if (!extension || !ALLOWED_EXTENSIONS.includes(extension as Extension)) {
-      throw new Error("Unsupported file type.");
-    }
+    const assetId = nanoid();
+    const publicId = nanoid();
 
-    return await db.transaction(async (tx) => {
-      const assetId = nanoid();
+    const fileName = `${publicId}.${extension}`;
 
-      const publicId = nanoid();
+    const buffer = Buffer.from(
+      await file.arrayBuffer(),
+    );
 
-      const fileName = `${publicId}.${extension}`;
+    uploadedFilePath = await saveUploadedFile(
+      buffer,
+      fileName,
+      safeFolderPath,
+    );
 
-      const uploadFolder = path.join(
-        process.cwd(),
-        "public",
-        "uploads",
-        ...(folderPath ? folderPath.split("/") : []),
-      );
+    const url = `/uploads/${
+      safeFolderPath
+        ? `${safeFolderPath}/`
+        : ""
+    }${fileName}`;
 
-      await fs.mkdir(uploadFolder, {
-        recursive: true,
-      });
-
-      uploadedFilePath = path.join(uploadFolder, fileName);
-
-      const buffer = Buffer.from(await file.arrayBuffer());
-
-      await fs.writeFile(uploadedFilePath, buffer);
-
-      const url = "/uploads/" + (folderPath ? `${folderPath}/` : "") + fileName;
-
-      await tx.insert(assets).values({
-        id: assetId,
-
-        publicId,
-
-        url,
-
-        originalName: file.name,
-
-        fileName,
-
-        extension: extension as Extension,
-
-        sizeBytes: file.size,
-
-        uploadedBy: session.user.id,
-
-        uploadedAt: new Date(),
-      });
-
-      return {
-        success: true,
-
-        assetId,
-
-        publicId,
-
-        url,
-
-        originalName: file.name,
-
-        fileName,
-
-        extension,
-
-        sizeBytes: file.size,
-      };
+    await db.insert(assets).values({
+      id: assetId,
+      publicId,
+      url,
+      originalName: file.name,
+      fileName,
+      extension,
+      sizeBytes: file.size,
+      uploadedBy: session.user.id,
+      uploadedAt: new Date(),
     });
-  } catch (error) {
-    console.error("uploadAssetAction Error:", error);
 
-    /**
-     * Cleanup uploaded file
-     * if transaction or upload process fails
-     */
+    return {
+      success: true,
+      assetId,
+      publicId,
+      url,
+      originalName: file.name,
+      fileName,
+      extension,
+      sizeBytes: file.size,
+    };
+  } catch (error) {
     if (uploadedFilePath) {
       try {
-        await fs.unlink(uploadedFilePath);
-
-        console.log("Temporary uploaded file removed:", uploadedFilePath);
+        await removeUploadedFile(uploadedFilePath);
       } catch (cleanupError) {
-        console.error("File cleanup failed:", cleanupError);
+        console.error(
+          "Failed to cleanup uploaded file:",
+          cleanupError,
+        );
       }
     }
 
+    console.error(
+      "uploadAssetAction error:",
+      error,
+    );
+
     throw new Error(
-      error instanceof Error ? error.message : "File upload failed.",
+      error instanceof Error
+        ? error.message
+        : "File upload failed.",
     );
   }
 }

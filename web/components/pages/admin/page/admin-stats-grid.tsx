@@ -1,7 +1,45 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { adminStatCards } from "@/lib/data/admin.mock";
+import { getAdminStats } from "@/lib/actions/dashboard.action";
+import { BookOpen, CalendarCheck, UserCog, Users } from "lucide-react";
 
-const AdminStatsGrid = () => {
+const AdminStatsGrid = async () => {
+  const stats = await getAdminStats();
+
+  if (!stats.success) {
+    return <div>Error loading stats</div>;
+  }
+
+  const adminStatCards = [
+    {
+      title: "Total Users",
+      value: stats.data.usersCount,
+      icon: Users,
+      status: "Current count",
+      color: "text-primary",
+    },
+    {
+      title: "Total Courses",
+      value: stats.data.coursesCount,
+      icon: BookOpen,
+      status: "Current count",
+      color: "text-primary",
+    },
+    {
+      title: "Pending Leave Approvals",
+      value: stats.data.pendingLeaveApprovals.toLocaleString(),
+      icon: CalendarCheck,
+      status: "Requires attention",
+      color: "text-amber-500",
+    },
+    {
+      title: "Active Instructors",
+      value: stats.data.activeInstructorsCount,
+      icon: UserCog,
+      status: "Currently active",
+      color: "text-emerald-500",
+    },
+  ];
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
       {adminStatCards.map((stat, index) => {
@@ -28,18 +66,9 @@ const AdminStatsGrid = () => {
                 </div>
               </div>
               <div className="mt-4 flex items-center text-sm">
-                <span
-                  className={
-                    stat.trend.startsWith("+")
-                      ? "text-emerald-500 font-medium"
-                      : "text-amber-500 font-medium"
-                  }
-                >
-                  {stat.trend}
-                </span>
-                <span className="text-muted-foreground ml-2">
-                  from last month
-                </span>
+                <div className="text-sm text-muted-foreground">
+                  {stat.status}
+                </div>
               </div>
             </CardContent>
           </Card>

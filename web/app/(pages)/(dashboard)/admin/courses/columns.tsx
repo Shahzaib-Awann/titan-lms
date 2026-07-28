@@ -1,29 +1,24 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { MoreHorizontal } from "lucide-react";
-
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 import { DataTableColumnHeader } from "@/components/ui/data-table/data-table-column-header";
+import { RowActions } from "./row-actions";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export interface Course {
   id: string;
   title: string;
-  instructor: string;
-  students: number;
-  lessons: number;
-  status: "published" | "draft" | "archived";
-  createdAt: string;
+  durationWeeks: number | null;
+  feeAmount: string | null;
+  createdAt: Date;
+  batches: number;
+  createdBy: {
+    id: string | null;
+    name: string | null;
+    avatarUrl: string | null;
+  };
 }
 
 export const columns: ColumnDef<Course>[] = [
@@ -54,58 +49,79 @@ export const columns: ColumnDef<Course>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Course" />
     ),
-    cell: ({ row }) => (
-      <div className="font-medium">{row.getValue("title")}</div>
-    ),
+    cell: ({ row }) => <div className="font-medium">{row.original.title}</div>,
   },
 
   {
-    accessorKey: "instructor",
+    accessorKey: "createdBy",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Instructor" />
-    ),
-  },
-
-  {
-    accessorKey: "students",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Students" />
-    ),
-    cell: ({ row }) => (
-      <div className="text-center">{row.getValue("students")}</div>
-    ),
-  },
-
-  {
-    accessorKey: "lessons",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Lessons" />
-    ),
-    cell: ({ row }) => (
-      <div className="text-center">{row.getValue("lessons")}</div>
-    ),
-  },
-
-  {
-    accessorKey: "status",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Status" />
+      <DataTableColumnHeader column={column} title="Created By" />
     ),
     cell: ({ row }) => {
-      const status = row.getValue("status") as Course["status"];
+      const creator = row.original.createdBy;
 
       return (
-        <span
-          className={
-            status === "published"
-              ? "text-green-600"
-              : status === "draft"
-                ? "text-yellow-600"
-                : "text-muted-foreground"
-          }
-        >
-          {status}
-        </span>
+        <div className="flex items-center gap-3">
+          <Avatar className="h-9 w-9">
+            <AvatarImage
+              src={creator.avatarUrl ?? undefined}
+              alt={creator.name ?? "Unknown"}
+            />
+            <AvatarFallback initial={creator.name} />
+          </Avatar>
+
+          <div className="text-sm">{creator.name ?? "Unknown"}</div>
+        </div>
+      );
+    },
+  },
+
+  {
+    accessorKey: "batches",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Batches" />
+    ),
+    cell: ({ row }) => (
+      <div className="text-center">{row.original.batches}</div>
+    ),
+  },
+
+  {
+    accessorKey: "durationWeeks",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Duration" />
+    ),
+    cell: ({ row }) => {
+      const duration = row.original.durationWeeks;
+
+      return (
+        <div className="text-center">
+          {duration ? `${duration} weeks` : "—"}
+        </div>
+      );
+    },
+  },
+
+  {
+    accessorKey: "feeAmount",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Fee" />
+    ),
+    cell: ({ row }) => {
+      const amount = row.original.feeAmount;
+
+      if (!amount) {
+        return <span className="text-muted-foreground">—</span>;
+      }
+
+      return (
+        <div>
+          {new Intl.NumberFormat("en-PK", {
+            style: "currency",
+            currency: "PKR",
+            maximumFractionDigits: 0,
+          }).format(Number(amount))}
+        </div>
       );
     },
   },
@@ -118,44 +134,13 @@ export const columns: ColumnDef<Course>[] = [
     cell: ({ row }) =>
       new Intl.DateTimeFormat("en-US", {
         dateStyle: "medium",
-      }).format(new Date(row.getValue("createdAt"))),
+      }).format(row.original.createdAt),
   },
 
   {
     id: "actions",
     cell: ({ row }) => {
-      const course = row.original;
-
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger className="h-8 w-8 p-0">
-            <span className="sr-only">Open menu</span>
-            <MoreHorizontal className="size-4" />
-          </DropdownMenuTrigger>
-
-          <DropdownMenuContent align="end">
-            <DropdownMenuGroup>
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-
-              <DropdownMenuItem
-                onClick={() => navigator.clipboard.writeText(course.id)}
-              >
-                Copy course ID
-              </DropdownMenuItem>
-
-              <DropdownMenuItem>View course</DropdownMenuItem>
-
-              <DropdownMenuItem>Edit course</DropdownMenuItem>
-            </DropdownMenuGroup>
-
-            <DropdownMenuSeparator />
-
-            <DropdownMenuItem className="text-destructive">
-              Delete course
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
+      return <RowActions id={row.original.id} />;
     },
   },
 ];

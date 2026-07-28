@@ -4,7 +4,6 @@ import AdminStatsGrid from "@/components/pages/admin/page/admin-stats-grid";
 import AdminRecentUsers from "@/components/pages/admin/page/admin-recent-users";
 import AdminQuickActions from "@/components/pages/admin/page/admin-quick-actions";
 import AdminUserDistribution from "@/components/pages/admin/page/admin-user-distribution";
-import { adminUserDistribution } from "@/lib/data/admin.mock";
 import Link from "next/link";
 
 export default function AdminDashboard() {
@@ -27,7 +26,7 @@ export default function AdminDashboard() {
 
           <div className="flex flex-wrap gap-4">
             <Link
-              href="/student/create"
+              href="/admin/students/create"
               className="h-12 flex items-center gap-1 rounded-xl bg-white px-6 font-semibold text-[#7658FF] shadow-sm transition-all hover:scale-[1.02] hover:bg-white/90"
             >
               <PlusCircle className="mr-2 h-5 w-5" />
@@ -48,7 +47,7 @@ export default function AdminDashboard() {
         {/* Right Column - Activity & Overview */}
         <div className="flex flex-col gap-8">
           <AdminQuickActions />
-          <AdminUserDistribution data={adminUserDistribution} />
+          <AdminUserDistribution />
         </div>
       </div>
     </div>

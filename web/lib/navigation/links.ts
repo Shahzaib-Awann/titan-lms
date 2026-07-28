@@ -18,23 +18,18 @@ import {
   Clock,
   Bookmark,
   UserPlus,
-  PlusCircle,
-  CalendarCheck,
   Layers,
   GraduationCap,
   ClipboardCheck,
 } from "lucide-react";
 import { NavItem } from "./types";
 
-
 export const adminNav: NavItem[] = [
-
   {
     title: "Dashboard",
     url: "/admin",
     icon: LayoutDashboard,
   },
-
 
   {
     title: "User Management",
@@ -49,7 +44,7 @@ export const adminNav: NavItem[] = [
             title: "Create Student",
             url: "/admin/students/create",
           },
-        ]
+        ],
       },
 
       {
@@ -60,10 +55,10 @@ export const adminNav: NavItem[] = [
             title: "Create Trainer",
             url: "/admin/trainers/create",
           },
-        ]
+        ],
       },
 
-       {
+      {
         title: "Administration",
         url: "/admin/admins",
         children: [
@@ -71,8 +66,8 @@ export const adminNav: NavItem[] = [
             title: "Create Admin",
             url: "/admin/admins/create",
           },
-        ]
-      }
+        ],
+      },
     ],
   },
   {
@@ -84,20 +79,8 @@ export const adminNav: NavItem[] = [
         title: "Create Course",
         url: "/admin/courses/create",
       },
-
-      {
-        title: "Syllabus",
-        url: "/admin/courses/syllabus",
-      },
-
-      {
-        title: "Topics",
-        url: "/admin/courses/topics",
-      },
-
     ],
   },
-
 
   {
     title: "Batches",
@@ -108,15 +91,14 @@ export const adminNav: NavItem[] = [
         title: "Create Batch",
         url: "/admin/batches/create",
       },
-
-      {
-        title: "Batch Schedule",
-        url: "/admin/batches/schedules",
-      },
-
     ],
   },
 
+  {
+    title: "Syllabus",
+    url: "/admin/syllabus",
+    icon: Layers,
+  },
 
   {
     title: "Enrollments",
@@ -132,17 +114,14 @@ export const adminNav: NavItem[] = [
         title: "Completed Enrollments",
         url: "/admin/enrollments/completed",
       },
-
     ],
   },
-
 
   {
     title: "Attendance",
     url: "#",
     icon: ClipboardCheck,
     children: [
-
       {
         title: "Students Attendance",
         url: "/admin/attendance/students",
@@ -155,13 +134,11 @@ export const adminNav: NavItem[] = [
     ],
   },
 
-
   {
     title: "Learning Management",
     url: "/admin/learning",
     icon: GraduationCap,
     children: [
-
       {
         title: "Syllabus Topics",
         url: "/admin/learning/topics",
@@ -176,10 +153,8 @@ export const adminNav: NavItem[] = [
         title: "Progress Tracking",
         url: "/admin/learning/progress",
       },
-
     ],
   },
-
 
   {
     title: "Assets",
@@ -187,13 +162,11 @@ export const adminNav: NavItem[] = [
     icon: FolderOpen,
   },
 
-
   {
     title: "Reports",
     url: "/admin/reports",
     icon: BarChart3,
     children: [
-
       {
         title: "Student Reports",
         url: "/admin/reports/students",
@@ -208,23 +181,20 @@ export const adminNav: NavItem[] = [
         title: "Course Reports",
         url: "/admin/reports/courses",
       },
-
     ],
   },
 
   {
     title: "Announcements",
-    url: '/admin/announcements',
-    icon: Bell
+    url: "/admin/announcements",
+    icon: Bell,
   },
-
 
   {
     title: "Settings",
     url: "/admin/settings",
     icon: Settings,
   },
-
 ];
 
 /* ========================================
@@ -429,11 +399,4 @@ const navConfig: Record<Role, NavItem[]> = {
 export const getNavByRole = (role?: string): NavItem[] =>
   navConfig[role?.toLowerCase() as Role] ?? [];
 
-export const quickActionsForAdmin = [
-  { label: "Add User", icon: UserPlus, url: "/users/create" },
-  { label: "Create Course", icon: PlusCircle, url: "/courses/create" },
-  { label: "Approve Leaves", icon: CalendarCheck, url: "/attendance/approve-leaves" },
-  { label: "Manage Instructors", icon: UserCog, url: "/users/trainers" },
-  { label: "View Reports", icon: FileText, url: "/reports" },
-  { label: "Settings", icon: Settings, url: "/settings" },
-];
+

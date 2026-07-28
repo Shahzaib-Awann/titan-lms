@@ -18,6 +18,7 @@ import { requireRole } from "./auth.action";
  */
 export async function getTrainers() {
   try {
+
     return await db.transaction(async (tx) => {
       return await tx
         .select({
