@@ -21,7 +21,7 @@ export interface SyllabusBatchProgress {
   id: string;
   name: string;
   trainer: string;
-  startDate: string;
+  startDate: Date;
   studentCount: number;
   progressPercentage: number;
 }
@@ -29,8 +29,8 @@ export interface SyllabusBatchProgress {
 export interface CourseSyllabusSummary {
   id: string;
   title: string;
-  description: string;
-  durationWeeks: number;
+  description: string | null;
+  durationWeeks: number | null;
   moduleCount: number;
   lessonCount: number;
   hasSyllabus: boolean;

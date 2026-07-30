@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/progress";
 import { Calendar, Users } from "lucide-react";
 import { SyllabusBatchProgress } from "@/types/syllabus";
+import { formatDate } from "@/lib/helpers/date-fns";
 
 interface BatchProgressTableProps {
   batches: SyllabusBatchProgress[];
@@ -62,7 +63,7 @@ export function BatchProgressTable({ batches }: BatchProgressTableProps) {
             <TableCell className="text-foreground">{batch.trainer}</TableCell>
 
             <TableCell>
-              <MetaItem icon={Calendar} value={batch.startDate} />
+              <MetaItem icon={Calendar} value={formatDate(batch.startDate)} />
             </TableCell>
 
             <TableCell>

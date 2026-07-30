@@ -37,7 +37,7 @@ export function CourseSyllabusCard({ course }: CourseSyllabusCardProps) {
               </CardTitle>
             </div>
             <CardDescription className="line-clamp-4 text-sm leading-relaxed">
-              {course.description}
+              {course.description || "No description available"}
             </CardDescription>
           </div>
 

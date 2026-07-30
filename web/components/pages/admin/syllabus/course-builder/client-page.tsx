@@ -33,6 +33,8 @@ import {
 } from "@/lib/actions/syllabus.action";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
+import { CourseSyllabusStats } from "./right-side-stats";
+import { EmptySyllabusState } from "./empty-syllabus-state";
 
 interface SyllabusClientPageProps {
   initialModules: SyllabusModule[];
@@ -447,13 +449,12 @@ export const SyllabusClientPage = ({
   return (
     <div className="space-y-8 pb-10">
       <SyllabusHeader
-        title={course.title}
-        description={course.description}
         onCreateModule={() => {
           setOpen(true);
         }}
         isUnsavedChanges={isDirty}
         onSave={submitHandler}
+        showCreateButton={modules.length > 0}
       />
 
       <SyllabusDialog
@@ -516,52 +517,60 @@ export const SyllabusClientPage = ({
         onConfirm={handleConfirmDelete}
       />
 
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCorners}
-        onDragStart={handleDragStart}
-        onDragOver={handleDragOver}
-        onDragEnd={handleDragEnd}
-      >
-        <section className="mx-auto max-w-5xl space-y-6">
-          <SortableContext
-            items={moduleIds}
-            strategy={verticalListSortingStrategy}
-          >
-            {modules.map((module) => (
-              <SortableModuleCard
-                key={module.id ?? module.title}
-                module={module}
-                onEditModule={(m) => setEditingModule(m)}
-                onDeleteModule={(m) =>
-                  setDeleteTarget({
-                    type: "module",
-                    moduleId: m.id,
-                    title: m.title,
-                  })
-                }
-                onAddLesson={(mId) => setLessonModuleId(mId)}
-                onEditLesson={(lesson, mId) =>
-                  setEditingLesson({
-                    ...lesson,
-                    moduleId: mId,
-                  })
-                }
-                onDeleteLesson={(lesson, mId) =>
-                  setDeleteTarget({
-                    type: "lesson",
-                    moduleId: mId,
-                    lessonId: lesson.id,
-                    title: lesson.title,
-                  })
-                }
-              />
-            ))}
-          </SortableContext>
-        </section>
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCorners}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDragEnd={handleDragEnd}
+        >
+          <section className="mx-auto max-w-5xl w-full space-y-6 col-span-1 order-2 xl:col-span-2 xl:order-1">
+            {modules.length === 0 ? (
+              <EmptySyllabusState onCreateModule={() => setOpen(true)} />
+            ) : (
+              <SortableContext
+                items={moduleIds}
+                strategy={verticalListSortingStrategy}
+              >
+                {modules.map((module) => (
+                  <SortableModuleCard
+                    key={module.id ?? module.title}
+                    module={module}
+                    onEditModule={(m) => setEditingModule(m)}
+                    onDeleteModule={(m) =>
+                      setDeleteTarget({
+                        type: "module",
+                        moduleId: m.id,
+                        title: m.title,
+                      })
+                    }
+                    onAddLesson={(mId) => setLessonModuleId(mId)}
+                    onEditLesson={(lesson, mId) =>
+                      setEditingLesson({
+                        ...lesson,
+                        moduleId: mId,
+                      })
+                    }
+                    onDeleteLesson={(lesson, mId) =>
+                      setDeleteTarget({
+                        type: "lesson",
+                        moduleId: mId,
+                        lessonId: lesson.id,
+                        title: lesson.title,
+                      })
+                    }
+                  />
+                ))}
+              </SortableContext>
+            )}
+          </section>
 
-        <SyllabusDragOverlay activeItem={activeItem} />
-      </DndContext>
+          <SyllabusDragOverlay activeItem={activeItem} />
+        </DndContext>
+
+        <CourseSyllabusStats course={course} modules={modules} />
+      </div>
     </div>
   );
 };

@@ -6,30 +6,28 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Save } from "lucide-react";
 
 interface SyllabusHeaderProps {
-  title: string;
-  description: string;
   onCreateModule?: () => void;
   onSave?: () => void;
   isUnsavedChanges: boolean;
+  showCreateButton?: boolean;
 }
 
 export const SyllabusHeader = ({
-  title,
-  description,
   onCreateModule,
   onSave,
   isUnsavedChanges,
+  showCreateButton = true,
 }: SyllabusHeaderProps) => {
   return (
     <section className="flex items-start justify-between gap-6 p-6">
       {/* Course Info */}
       <div className="space-y-2">
         <h1 className="text-3xl font-bold tracking-tight text-foreground">
-          {title}
+          Course Syllabus
         </h1>
 
         <p className="max-w-3xl line-clamp-2 text-muted-foreground">
-          {description}
+          Manage course modules, lessons, and learning objectives.
         </p>
       </div>
 
@@ -54,13 +52,15 @@ export const SyllabusHeader = ({
           Save
         </Button>
 
-        <Button
-          onClick={onCreateModule}
-          className="gap-2 bg-primary text-primary-foreground hover:bg-blurple-hover"
-        >
-          <Plus className="h-4 w-4" />
-          Create Module
-        </Button>
+        {showCreateButton && (
+          <Button
+            onClick={onCreateModule}
+            className="gap-2 bg-primary text-primary-foreground hover:bg-blurple-hover"
+          >
+            <Plus className="h-4 w-4" />
+            Create Module
+          </Button>
+        )}
       </div>
     </section>
   );
