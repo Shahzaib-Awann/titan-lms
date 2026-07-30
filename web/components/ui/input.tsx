@@ -1,12 +1,14 @@
 import React, { InputHTMLAttributes, forwardRef, useId } from "react";
 import { cn } from "@/lib/utils";
-import { LucideIcon } from "lucide-react";
+import { LucideIcon, X } from "lucide-react";
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
   icon?: LucideIcon;
   wrapperClassName?: string;
+  clearable?: boolean;
+  onClear?: () => void;
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
@@ -19,12 +21,17 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       error,
       required,
       id,
+      clearable,
+      onClear,
+      value,
       ...props
     },
     ref,
   ) => {
     const generatedId = useId();
     const inputId = id || generatedId;
+
+    const showClear = clearable && value;
 
     return (
       <div className={cn("flex flex-col gap-2", wrapperClassName)}>
@@ -50,6 +57,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
               "border border-input bg-card shadow-sm shadow-black/5",
               "pr-4",
               Icon ? "pl-10" : "pl-4",
+              showClear && "pr-10",
               "text-sm text-foreground",
               "placeholder:text-muted-foreground",
               "transition-all duration-200",
@@ -73,6 +81,16 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             required={required}
             {...props}
           />
+
+          {showClear && (
+            <button
+              type="button"
+              onClick={onClear}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <X className="size-4" />
+            </button>
+          )}
         </div>
 
         {error && (

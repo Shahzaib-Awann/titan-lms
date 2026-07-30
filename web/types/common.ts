@@ -28,3 +28,5 @@ export type WeekDays = "monday" | "tuesday" | "wednesday" | "thursday" | "friday
  * Defines possible batch statuses.
  */
 export type BatchStatus = "upcoming" | "running" | "completed";
+
+export type EnrollmentStatus = "active" | "completed" | "transferred" | "dropped" | "suspended"
