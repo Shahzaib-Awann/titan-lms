@@ -64,6 +64,27 @@
       "when": 1785088941662,
       "tag": "0008_nappy_nemesis",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1785261099319,
+      "tag": "0009_colossal_redwing",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1785391281640,
+      "tag": "0010_condemned_big_bertha",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "5",
+      "when": 1785392780563,
+      "tag": "0011_melodic_shockwave",
+      "breakpoints": true
     }
   ]
 }

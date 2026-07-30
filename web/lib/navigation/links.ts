@@ -104,17 +104,6 @@ export const adminNav: NavItem[] = [
     title: "Enrollments",
     url: "/admin/enrollments",
     icon: UserPlus,
-    children: [
-      {
-        title: "Active Enrollments",
-        url: "/admin/enrollments/active",
-      },
-
-      {
-        title: "Completed Enrollments",
-        url: "/admin/enrollments/completed",
-      },
-    ],
   },
 
   {

@@ -9,6 +9,7 @@ import {
   bigint,
   decimal,
   time,
+  unique,
 } from "drizzle-orm/mysql-core";
 
 // Enums
@@ -17,6 +18,7 @@ export const userStatusEnum = mysqlEnum("status", ["active", "inactive", "suspen
 export const assetExtensionEnum = mysqlEnum("extension", ["pdf", "mp4", "png", "jpg", "jpeg", "md"]);
 export const weekdayEnum = mysqlEnum("weekday", ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"]);
 export const moduleProgressStatusEnum = mysqlEnum("module_progress_status", ["not_started", "in_progress", "completed", "skipped"]);
+export const enrollmentStatusEnum = mysqlEnum("enrollment_status", ["active", "completed", "transferred", "dropped", "suspended"]);
 
 // Users table
 export const users = mysqlTable("users", {
@@ -185,3 +187,22 @@ export const moduleProgress = mysqlTable("module_progress", {
   completedAt: timestamp("completed_at"),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });
+
+// Student Batch Enrollments
+export const enrollments = mysqlTable("enrollments", {
+  id: varchar("id", { length: 21 }).primaryKey(),
+
+  batchId: varchar("batch_id", { length: 21 }).notNull().references(() => courseBatches.id),
+  studentId: varchar("student_id", { length: 21 }).notNull().references(() => studentProfiles.id),
+
+  status: enrollmentStatusEnum.notNull().default("active"),
+
+  enrolledAt: timestamp("enrolled_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"),
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+  deletedAt: timestamp("deleted_at"),
+}, (table) => [
+  unique("student_batch_unique").on(table.studentId, table.batchId),
+]);
