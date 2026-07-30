@@ -19,7 +19,6 @@ import {
   Bookmark,
   UserPlus,
   Layers,
-  GraduationCap,
   ClipboardCheck,
 } from "lucide-react";
 import { NavItem } from "./types";
@@ -104,6 +103,12 @@ export const adminNav: NavItem[] = [
     title: "Enrollments",
     url: "/admin/enrollments",
     icon: UserPlus,
+    children: [
+      {
+        title: "Bulk Enrollments",
+        url: "/admin/enrollments/create",
+      },
+    ],
   },
 
   {
@@ -122,35 +127,16 @@ export const adminNav: NavItem[] = [
       },
     ],
   },
-
   {
-    title: "Learning Management",
-    url: "/admin/learning",
-    icon: GraduationCap,
-    children: [
-      {
-        title: "Syllabus Topics",
-        url: "/admin/learning/topics",
-      },
-
-      {
-        title: "Sub Topics",
-        url: "/admin/learning/subtopics",
-      },
-
-      {
-        title: "Progress Tracking",
-        url: "/admin/learning/progress",
-      },
-    ],
+    title: "Announcements",
+    url: "/admin/announcements",
+    icon: Bell,
   },
-
   {
     title: "Assets",
     url: "/admin/assets",
     icon: FolderOpen,
   },
-
   {
     title: "Reports",
     url: "/admin/reports",
@@ -172,13 +158,6 @@ export const adminNav: NavItem[] = [
       },
     ],
   },
-
-  {
-    title: "Announcements",
-    url: "/admin/announcements",
-    icon: Bell,
-  },
-
   {
     title: "Settings",
     url: "/admin/settings",
@@ -193,79 +172,79 @@ export const adminNav: NavItem[] = [
 export const trainerNav: NavItem[] = [
   {
     title: "Dashboard",
-    url: "/",
+    url: "/trainer",
     icon: LayoutDashboard,
   },
   {
     title: "My Courses",
-    url: "/courses",
+    url: "/trainer/courses",
     icon: BookOpen,
   },
   {
     title: "Assignments",
-    url: "/assignments",
+    url: "/trainer/assignments",
     icon: FileText,
     children: [
       {
         title: "Create Assignment",
-        url: "/assignments/create",
+        url: "/trainer/assignments/create",
       },
       {
         title: "Submissions",
-        url: "/assignments/submissions",
+        url: "/trainer/assignments/submissions",
       },
     ],
   },
   {
     title: "Quizzes",
-    url: "/quizzes",
+    url: "/trainer/quizzes",
     icon: ClipboardList,
     children: [
       {
         title: "Create Quiz",
-        url: "/quizzes/create",
+        url: "/trainer/quizzes/create",
       },
       {
         title: "AI Quiz Generator",
-        url: "/quizzes/ai-generator",
+        url: "/trainer/quizzes/ai-generator",
       },
       {
         title: "Results",
-        url: "/quizzes/results",
+        url: "/trainer/quizzes/results",
       },
     ],
   },
   {
     title: "Content Library",
-    url: "/library",
+    url: "/trainer/library",
     icon: FolderOpen,
     children: [
       {
         title: "Assets",
-        url: "/library/assets",
+        url: "/trainer/library/assets",
       },
       {
         title: "Documents",
-        url: "/library/documents",
+        url: "/trainer/library/documents",
       },
       {
         title: "Videos",
-        url: "/library/videos",
+        url: "/trainer/library/videos",
       },
       {
         title: "Uploads",
-        url: "/library/uploads",
+        url: "/trainer/library/uploads",
       },
     ],
   },
   {
     title: "Announcements",
-    url: "/announcements",
+    url: "/trainer/announcements",
     icon: Bell,
   },
   {
     title: "Profile",
-    url: "/profile",
+    url: "/trainer/profile",
     icon: UserCog,
   },
 ];

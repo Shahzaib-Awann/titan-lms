@@ -1,39 +1,44 @@
+import {
+  AlertCircle,
+  BookOpen,
+  CalendarCheck,
+  UserCog,
+  Users,
+} from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { getAdminStats } from "@/lib/actions/dashboard.action";
-import { BookOpen, CalendarCheck, UserCog, Users } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const AdminStatsGrid = async () => {
-  const stats = await getAdminStats();
+  const result = await getAdminStats();
 
-  if (!stats.success) {
-    return <div>Error loading stats</div>;
-  }
+  const data = result.data;
 
   const adminStatCards = [
     {
       title: "Total Users",
-      value: stats.data.usersCount,
+      value: data.usersCount,
       icon: Users,
-      status: "Current count",
+      status: "Registered users",
       color: "text-primary",
     },
     {
       title: "Total Courses",
-      value: stats.data.coursesCount,
+      value: data.coursesCount,
       icon: BookOpen,
-      status: "Current count",
+      status: "Published courses",
       color: "text-primary",
     },
     {
-      title: "Pending Leave Approvals",
-      value: stats.data.pendingLeaveApprovals.toLocaleString(),
+      title: "Active Enrollments",
+      value: data.activeEnrollmentsCount,
       icon: CalendarCheck,
-      status: "Requires attention",
+      status: "Currently active",
       color: "text-amber-500",
     },
     {
       title: "Active Instructors",
-      value: stats.data.activeInstructorsCount,
+      value: data.activeInstructorsCount,
       icon: UserCog,
       status: "Currently active",
       color: "text-emerald-500",
@@ -41,39 +46,51 @@ const AdminStatsGrid = async () => {
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-      {adminStatCards.map((stat, index) => {
-        const Icon = stat.icon;
-        return (
-          <Card
-            key={index}
-            className="shadow-sm hover:-translate-y-1 transition-all duration-300"
-          >
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-muted-foreground">
-                    {stat.title}
-                  </p>
-                  <p className="text-3xl font-bold tracking-tight">
-                    {stat.value}
-                  </p>
+    <div className="space-y-6">
+      {!result.success && (
+        <Alert variant="destructive" className="items-center flex flex-row">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription className="text-destructive">
+            We couldn&apos;t load the latest dashboard statistics. The values
+            shown may be unavailable.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        {adminStatCards.map((stat) => {
+          const Icon = stat.icon;
+
+          return (
+            <Card
+              key={stat.title}
+              className="transition-all duration-300 hover:-translate-y-1 hover:shadow-md"
+            >
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      {stat.title}
+                    </p>
+
+                    <p className="mt-2 text-3xl font-bold tracking-tight">
+                      {stat.value.toLocaleString()}
+                    </p>
+
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      {stat.status}
+                    </p>
+                  </div>
+
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted">
+                    <Icon className={`h-6 w-6 ${stat.color}`} />
+                  </div>
                 </div>
-                <div
-                  className={`h-12 w-12 rounded-xl bg-muted flex items-center justify-center ${stat.color} bg-opacity-10`}
-                >
-                  <Icon className={`h-6 w-6 ${stat.color}`} />
-                </div>
-              </div>
-              <div className="mt-4 flex items-center text-sm">
-                <div className="text-sm text-muted-foreground">
-                  {stat.status}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        );
-      })}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
     </div>
   );
 };

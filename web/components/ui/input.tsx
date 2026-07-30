@@ -23,7 +23,6 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       id,
       clearable,
       onClear,
-      value,
       ...props
     },
     ref,
@@ -31,7 +30,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     const generatedId = useId();
     const inputId = id || generatedId;
 
-    const showClear = clearable && value;
+    const showClear = clearable && props.value;
 
     return (
       <div className={cn("flex flex-col gap-2", wrapperClassName)}>

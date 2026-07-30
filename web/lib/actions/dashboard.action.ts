@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { users, courses, trainerProfiles } from "@/lib/db/schema";
+import { users, courses, trainerProfiles, enrollments } from "@/lib/db/schema";
 import { format } from "date-fns";
 import { count, eq, isNull, desc, and } from "drizzle-orm";
 
@@ -10,11 +10,11 @@ import { count, eq, isNull, desc, and } from "drizzle-orm";
  */
 export async function getAdminStats() {
   try {
-
     const [
       usersCount,
       coursesCount,
       activeInstructorsCount,
+      activeEnrollmentsCount,
     ] = await Promise.all([
       db
         .select({
@@ -35,15 +35,24 @@ export async function getAdminStats() {
           count: count(),
         })
         .from(trainerProfiles)
-        .innerJoin(
-          users,
-          eq(trainerProfiles.userId, users.id),
-        )
+        .innerJoin(users, eq(trainerProfiles.userId, users.id))
         .where(
           and(
             eq(users.status, "active"),
             isNull(users.deletedAt),
             isNull(trainerProfiles.deletedAt),
+          ),
+        ),
+
+      db
+        .select({
+          count: count(),
+        })
+        .from(enrollments)
+        .where(
+          and(
+            eq(enrollments.status, "active"),
+            isNull(enrollments.deletedAt),
           ),
         ),
     ]);
@@ -53,17 +62,16 @@ export async function getAdminStats() {
       data: {
         usersCount: Number(usersCount[0]?.count ?? 0),
         coursesCount: Number(coursesCount[0]?.count ?? 0),
-        pendingLeaveApprovals: 0,
+        activeEnrollmentsCount: Number(
+          activeEnrollmentsCount[0]?.count ?? 0,
+        ),
         activeInstructorsCount: Number(
           activeInstructorsCount[0]?.count ?? 0,
         ),
       },
     };
   } catch (error) {
-    console.error(
-      "Failed to fetch admin dashboard stats:",
-      error,
-    );
+    console.error("Failed to fetch admin dashboard stats:", error);
 
     return {
       success: false,
@@ -71,7 +79,7 @@ export async function getAdminStats() {
       data: {
         usersCount: 0,
         coursesCount: 0,
-        pendingLeaveApprovals: 0,
+        activeEnrollmentsCount: 0,
         activeInstructorsCount: 0,
       },
     };

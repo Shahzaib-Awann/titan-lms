@@ -1,6 +1,9 @@
 import { TrainerForm } from "@/components/forms/trainer-form";
+import { Button } from "@/components/ui/button";
 import { getTrainerForEdit } from "@/lib/actions/trainer.action";
+import { AlertTriangle, ArrowLeft } from "lucide-react";
 import type { Metadata } from "next";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Edit Trainer | Titan LMS",
@@ -17,8 +20,23 @@ export default async function EditTrainerPage({
 
   if (!trainer) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-muted-foreground">Trainer not found.</p>
+      <div className="p-6 flex flex-col min-h-[50vh] justify-center items-center">
+        <div className="rounded-full bg-destructive/10 p-5">
+          <AlertTriangle className="text-destructive size-8" />
+        </div>
+        <h3 className="text-xl mt-5 font-semibold text-foreground">
+          Trainer not found
+        </h3>
+        <p className="mt-1 text-center text-sm leading-relaxed text-muted-foreground">
+          The trainer profile you are trying to edit does not exist or may have
+          been removed.
+        </p>
+        <Link href="/admin/trainers">
+          <Button className="w-full mt-5">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Trainers
+          </Button>
+        </Link>
       </div>
     );
   }

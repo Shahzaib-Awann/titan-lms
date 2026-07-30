@@ -8,7 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CalendarIcon, Sparkles } from "lucide-react";
+import { CalendarIcon } from "lucide-react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 import { cn } from "@/lib/utils";
@@ -258,34 +258,6 @@ export const FiltersSidebar = () => {
             }}
           >
             Reset Filters
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* Help Card */}
-
-      <Card className="bg-linear-to-br from-primary to-primary/80 text-primary-foreground border-none shadow-sm relative overflow-hidden">
-        <div className="absolute top-0 right-0 p-4 opacity-20">
-          <Sparkles className="w-16 h-16" />
-        </div>
-
-        <div className="absolute -bottom-6 -left-6 opacity-10">
-          <Sparkles className="w-32 h-32" />
-        </div>
-
-        <CardContent className="p-6 space-y-4 relative z-10">
-          <h3 className="font-bold text-xl">Need Help?</h3>
-
-          <p className="text-sm text-primary-foreground/90 font-medium leading-relaxed">
-            Learn how to create high-engagement announcements that drive student
-            success.
-          </p>
-
-          <Button
-            variant="secondary"
-            className="bg-white/20 hover:bg-white/30 text-white border-none mt-2"
-          >
-            View Guide
           </Button>
         </CardContent>
       </Card>
