@@ -10,6 +10,7 @@ import {
   decimal,
   time,
   unique,
+  boolean,
 } from "drizzle-orm/mysql-core";
 
 // Enums
@@ -19,6 +20,7 @@ export const assetExtensionEnum = mysqlEnum("extension", ["pdf", "mp4", "png", "
 export const weekdayEnum = mysqlEnum("weekday", ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"]);
 export const moduleProgressStatusEnum = mysqlEnum("module_progress_status", ["not_started", "in_progress", "completed", "skipped"]);
 export const enrollmentStatusEnum = mysqlEnum("enrollment_status", ["active", "completed", "transferred", "dropped", "suspended"]);
+export const announcementAudienceEnum = mysqlEnum("target_audience", ["all", "trainers", "students"]);
 
 // Users table
 export const users = mysqlTable("users", {
@@ -206,3 +208,25 @@ export const enrollments = mysqlTable("enrollments", {
 }, (table) => [
   unique("student_batch_unique").on(table.studentId, table.batchId),
 ]);
+
+// Announcements
+export const announcements = mysqlTable("announcements", {
+  id: varchar("id", { length: 21 }).primaryKey(),
+
+  createdBy: varchar("created_by", { length: 21 }).notNull().references(() => users.id),
+
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+
+  isPublic: boolean("is_public").notNull().default(false),
+  targetAudience: announcementAudienceEnum.notNull().default("all"),
+
+  isPinned: boolean("is_pinned").notNull().default(false),
+
+  startDate: date("start_date"),
+  endDate: date("end_date"),
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+  deletedAt: timestamp("deleted_at"),
+});
