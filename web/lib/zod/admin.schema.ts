@@ -167,15 +167,15 @@ export const ScheduleSchema = z.object({
   endTime: z.string({ error: "End time is required" }).min(1, "End time is required"),
   room: z.string().max(100, "Room name must be less than 100 characters").optional(),
 }).refine(
-    (data) => {
-      if (!data.startTime || !data.endTime) return true;
-      return data.endTime > data.startTime;
-    },
-    {
-      message: "End time must be after start time",
-      path: ["endTime"],
-    },
-  );
+  (data) => {
+    if (!data.startTime || !data.endTime) return true;
+    return data.endTime > data.startTime;
+  },
+  {
+    message: "End time must be after start time",
+    path: ["endTime"],
+  },
+);
 
 export const BatchFormSchema = z
   .object({
@@ -244,7 +244,6 @@ export const CourseModuleSchema = z.object({
     .min(1, "Each module must have at least one lesson"),
 });
 
-
 export const SyllabusSchema = z
   .array(CourseModuleSchema)
   .min(1, "At least one module is required");
@@ -260,3 +259,27 @@ export const syllabusDialogFormSchema = z.object({
     .min(1, "Description is required")
     .max(500, "Description must be less than 500 characters"),
 });
+
+export const AnnouncementFormSchema = z.object({
+  id: z.string().nullable(),
+
+  title: z.string().min(2, "Title must be at least 2 characters").max(255, "Title must be less than 255 characters"),
+  description: z.string().min(10, "Description must be at least 10 characters").max(2000, "Description must be less than 2000 characters"),
+
+  audience: z.enum(["all", "trainers", "students"], { error: "Audience is required" }),
+  isPublic: z.boolean({ error: "Visibility is required" }),
+  isPinned: z.boolean({ error: "Pinned status is required" }),
+  startDate: z.string({ error: "Start date is required" }).min(1, "Start date is required"),
+  endDate: z.string().nullable(),
+})
+  .refine(
+    (data) => {
+      if (!data.endDate) return true;
+
+      return new Date(data.endDate) >= new Date(data.startDate);
+    },
+    {
+      message: "End date must be after start date",
+      path: ["endDate"],
+    }
+  );

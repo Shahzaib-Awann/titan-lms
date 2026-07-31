@@ -2,91 +2,130 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Pin, Pencil, Trash2 } from "lucide-react";
+import { Pin } from "lucide-react";
+import { DataTableColumnHeader } from "@/components/ui/data-table/data-table-column-header";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { RowActions } from "./row-actions";
 
 export interface Announcement {
   id: string;
   title: string;
-  description: string;
-  status: "public" | "private";
-  audience: string;
-  pinned: boolean;
+  description: string | null;
+  isPublic: boolean;
+  audience: "all" | "trainers" | "students";
+  isPinned: boolean;
+  createdBy: {
+    id: string;
+    name: string;
+    avatarURL: string | null;
+  };
+  createdAt: Date;
 }
 
 export const columns: ColumnDef<Announcement>[] = [
+  {
+    accessorKey: "isPinned",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Pin" className="max-w-14" />
+    ),
+    cell: ({ row }) => {
+      const announcement = row.original;
+
+      return (
+        <div className="mt-1">
+          <Pin
+            className={`w-4 h-4 ${
+              announcement.isPinned
+                ? "text-primary/70"
+                : "text-muted-foreground/30"
+            }`}
+          />
+        </div>
+      );
+    },
+  },
+
   {
     accessorKey: "title",
     header: "ANNOUNCEMENT",
     cell: ({ row }) => {
       const announcement = row.original;
+
       return (
-        <div className="flex items-start gap-3">
-          <div className="mt-1">
-            <Pin
-              className={`w-4 h-4 ${announcement.pinned ? "text-primary/70" : "text-muted-foreground/30"}`}
-            />
-          </div>
-          <div>
-            <p className="font-bold text-foreground">{announcement.title}</p>
-            <p className="text-sm text-muted-foreground truncate max-w-37.5 sm:max-w-50">
-              {announcement.description}
-            </p>
-          </div>
+        <div>
+          <p className="font-bold text-foreground">{announcement.title}</p>
+
+          <p className="text-sm text-muted-foreground truncate max-w-50">
+            {announcement.description ?? "No description"}
+          </p>
         </div>
       );
     },
   },
+
   {
-    accessorKey: "status",
+    accessorKey: "isPublic",
     header: "STATUS",
     cell: ({ row }) => {
-      const status = row.getValue("status") as string;
+      const isPublic = row.original.isPublic;
 
-      let variant: "success" | "warning" | "difficulty" | "destructive" =
-        "difficulty";
-
-      if (status === "public") variant = "success";
-      if (status === "private") variant = "warning";
+      const status = isPublic ? "public" : "private";
 
       return (
-        <Badge variant={variant} className="capitalize rounded-full">
+        <Badge
+          variant={isPublic ? "success" : "warning"}
+          className="capitalize rounded-full"
+        >
           {status}
         </Badge>
       );
     },
   },
+
   {
     accessorKey: "audience",
     header: "AUDIENCE",
-    cell: ({ row }) => (
-      <span className="text-sm text-foreground">
-        {row.getValue("audience")}
-      </span>
-    ),
+    cell: ({ row }) => {
+      const audience = row.original.audience;
+
+      const labels = {
+        all: "All Members",
+        trainers: "Trainers Only",
+        students: "Students Only",
+      };
+
+      return (
+        <span className="text-sm text-foreground">{labels[audience]}</span>
+      );
+    },
   },
+
   {
-    id: "actions",
-    header: "ACTIONS",
-    cell: () => {
+    accessorKey: "createdBy",
+    header: "CREATED BY",
+    cell: ({ row }) => {
+      const user = row.original.createdBy;
+
       return (
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-muted-foreground hover:text-foreground"
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-muted-foreground hover:text-destructive"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          <Avatar className="h-9 w-9">
+            <AvatarImage
+              src={user.avatarURL ?? undefined}
+              alt={user.name ?? "Unknown"}
+            />
+            <AvatarFallback initial={user.name} />
+          </Avatar>
+
+          <span className="text-sm text-foreground">{user.name}</span>
         </div>
       );
+    },
+  },
+
+  {
+    id: "actions",
+    cell: ({ row }) => {
+      return <RowActions id={row.original.id} />;
     },
   },
 ];

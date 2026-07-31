@@ -8,8 +8,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CalendarIcon } from "lucide-react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { CalendarIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -28,10 +28,12 @@ export const FiltersSidebar = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [status, setStatus] = useState(searchParams.get("status") ?? "all");
+  const [audience, setAudience] = useState(
+    searchParams.get("audience") ?? "all",
+  );
 
-  const [audience, setAudience] = useState<string[]>(
-    searchParams.get("audience")?.split(",") || [],
+  const [visibility, setVisibility] = useState(
+    searchParams.get("visibility") ?? "both",
   );
 
   const [startDate, setStartDate] = useState<Date | undefined>(
@@ -68,83 +70,73 @@ export const FiltersSidebar = () => {
         <CardContent className="p-5 space-y-6">
           <h3 className="font-bold text-lg">Filters</h3>
 
-          {/* Status */}
+          {/* Audience */}
           <div className="space-y-3">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">
-              Status
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Audience
             </span>
 
             <Select
-              value={status}
-              onValueChange={(value) => {
-                const newStatus = value ?? "all";
-
-                setStatus(newStatus);
-
-                updateFilters({
-                  status: newStatus,
-                });
-              }}
-            >
-              <SelectTrigger className="bg-background/50 border-border w-full capitalize">
-                <SelectValue placeholder="All Statuses" />
-              </SelectTrigger>
-
-              <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-
-                <SelectItem value="live">Live</SelectItem>
-
-                <SelectItem value="scheduled">Scheduled</SelectItem>
-
-                <SelectItem value="draft">Draft</SelectItem>
-
-                <SelectItem value="expired">Expired</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Audience */}
-          <div className="space-y-3">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">
-              Target Audience
-            </span>
-
-            <ToggleGroup
               value={audience}
               onValueChange={(value) => {
-                const filteredAudience = value.filter(
-                  (item) => item !== "all-members",
-                );
+                if (!value) return;
 
                 setAudience(value);
 
                 updateFilters({
-                  audience: filteredAudience.length
-                    ? filteredAudience.join(",")
-                    : undefined,
+                  audience: value,
+                });
+              }}
+            >
+              <SelectTrigger className="w-full capitalize">
+                <SelectValue placeholder="All Audience" />
+              </SelectTrigger>
+
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="students">Students</SelectItem>
+                <SelectItem value="trainers">Trainers</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Visibility */}
+          <div className="space-y-3">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Visibility
+            </span>
+
+            <ToggleGroup
+              value={[visibility]}
+              onValueChange={(value) => {
+                const selected = value[0];
+
+                if (!selected) return;
+
+                setVisibility(selected);
+
+                updateFilters({
+                  visibility: selected === "both" ? undefined : selected,
                 });
               }}
               variant="outline"
-              className="flex flex-row flex-wrap gap-2 p-1.5 items-stretch"
+              className="flex gap-2"
             >
-              <ToggleGroupItem value="all-members">All Members</ToggleGroupItem>
+              <ToggleGroupItem value="both">Both</ToggleGroupItem>
+              <ToggleGroupItem value="public">Public</ToggleGroupItem>
 
-              <ToggleGroupItem value="students">Students</ToggleGroupItem>
-
-              <ToggleGroupItem value="instructors">Instructors</ToggleGroupItem>
+              <ToggleGroupItem value="private">Private</ToggleGroupItem>
             </ToggleGroup>
           </div>
 
           {/* Date Range */}
           <div className="space-y-3">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Date Range
             </span>
 
             <div className="space-y-3">
               {/* Start Date */}
-
               <Popover>
                 <PopoverTrigger
                   render={
@@ -175,7 +167,6 @@ export const FiltersSidebar = () => {
 
                       setStartDate(date);
 
-                      // Remove invalid end date
                       if (endDate && date > endDate) {
                         setEndDate(undefined);
 
@@ -196,7 +187,6 @@ export const FiltersSidebar = () => {
               </Popover>
 
               {/* End Date */}
-
               <Popover>
                 <PopoverTrigger
                   render={
@@ -226,11 +216,6 @@ export const FiltersSidebar = () => {
                     onSelect={(date) => {
                       if (!date) return;
 
-                      // Safety check
-                      if (startDate && date < startDate) {
-                        return;
-                      }
-
                       setEndDate(date);
 
                       updateFilters({
@@ -244,13 +229,12 @@ export const FiltersSidebar = () => {
           </div>
 
           {/* Reset */}
-
           <Button
             variant="secondary"
             className="w-full bg-background/80 hover:bg-background border border-border"
             onClick={() => {
-              setStatus("all");
-              setAudience([]);
+              setAudience("all");
+              setVisibility("public");
               setStartDate(undefined);
               setEndDate(undefined);
 
