@@ -216,14 +216,14 @@ export const announcements = mysqlTable("announcements", {
   createdBy: varchar("created_by", { length: 21 }).notNull().references(() => users.id),
 
   title: varchar("title", { length: 255 }).notNull(),
-  description: text("description"),
+  description: text("description").notNull(),
 
   isPublic: boolean("is_public").notNull().default(false),
   targetAudience: announcementAudienceEnum.notNull().default("all"),
 
   isPinned: boolean("is_pinned").notNull().default(false),
 
-  startDate: date("start_date"),
+  startDate: date("start_date").notNull(),
   endDate: date("end_date"),
 
   createdAt: timestamp("created_at").defaultNow().notNull(),

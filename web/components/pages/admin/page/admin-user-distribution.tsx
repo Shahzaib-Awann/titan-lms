@@ -37,7 +37,7 @@ const AdminUserDistribution = async () => {
   ];
 
   return (
-    <Card className="overflow-hidden border-border/60 bg-card shadow-card transition-all duration-300 hover:-translate-y-1 hover:shadow-elevated">
+    <Card className="overflow-hidden shadow-sm hover:shadow-md">
       <CardHeader className="space-y-1 border-b border-border/50 pb-6">
         <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
           Analytics
@@ -52,9 +52,9 @@ const AdminUserDistribution = async () => {
         </p>
       </CardHeader>
 
-      <CardContent className="space-y-6 pt-0">
+      <CardContent className="space-y-6 pt-0 flex flex-row w-full gap-8">
         {data.map((item) => (
-          <div key={item.id} className="space-y-3">
+          <div key={item.id} className="space-y-3  w-full">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <span

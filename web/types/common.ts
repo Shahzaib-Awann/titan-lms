@@ -29,4 +29,12 @@ export type WeekDays = "monday" | "tuesday" | "wednesday" | "thursday" | "friday
  */
 export type BatchStatus = "upcoming" | "running" | "completed";
 
-export type EnrollmentStatus = "active" | "completed" | "transferred" | "dropped" | "suspended"
+/**
+ * Represents a student's current enrollment status.
+ */
+export type EnrollmentStatus = "active" | "completed" | "transferred" | "dropped" | "suspended";
+
+/**
+ * Represents the current visibility period of an announcement.
+ */
+export type AnnouncementStatus = "live" | "expired" | "scheduled";
