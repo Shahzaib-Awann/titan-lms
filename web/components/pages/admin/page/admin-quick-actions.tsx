@@ -87,7 +87,7 @@ const quickActionsForAdmin = [
 
 const AdminQuickActions = () => {
   return (
-    <Card className="overflow-hidden border-border/60 shadow-card">
+    <Card className="overflow-hidden shadow-sm hover:shadow-md">
       <CardHeader className="border-b border-border/50 pb-6">
         <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
           Shortcuts

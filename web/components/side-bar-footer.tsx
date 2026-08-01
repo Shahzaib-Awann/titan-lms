@@ -15,7 +15,9 @@ const SideBarFooter = () => {
       </div>
 
       <CardContent className="px-5 space-y-2 relative z-10">
-        <h3 className="font-bold text-xl">Need Help?</h3>
+        <h3 className="font-bold text-primary-foreground text-xl">
+          Need Help?
+        </h3>
 
         <p className="text-sm text-primary-foreground/90 font-medium leading-relaxed">
           Learn best practices for managing your LMS.

@@ -263,7 +263,7 @@ function CalendarDayButton({
       className={cn(
         [
           "relative z-10",
-          "size-7.5",
+          "size-9",
           "rounded-xl",
 
           "text-sm font-medium",

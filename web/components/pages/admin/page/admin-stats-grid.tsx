@@ -64,7 +64,7 @@ const AdminStatsGrid = async () => {
           return (
             <Card
               key={stat.title}
-              className="transition-all duration-300 hover:-translate-y-1 hover:shadow-md"
+              className="transition-all duration-300 hover:-translate-y-1 shadow-sm hover:shadow-md"
             >
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">

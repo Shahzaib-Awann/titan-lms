@@ -53,7 +53,7 @@ const AdminRecentUsers = async () => {
   const users = result.data;
 
   return (
-    <Card className="flex-1 overflow-hidden border-border/60 shadow-card transition-all duration-300 hover:shadow-elevated">
+    <Card className="flex-1 overflow-hidden transition-all duration-300 shadow-sm hover:shadow-md">
       <CardContent className="p-0">
         <CardHeader className="border-b border-border/50">
           <div className="flex items-center justify-between">
