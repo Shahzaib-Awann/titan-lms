@@ -5,13 +5,10 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { ThemeToggle } from "./ui/theme-toggle";
 import UserAccountMenu from "./user-account-menu";
 import { Input } from "./ui/input";
+import { getCurrentUser } from "@/lib/actions/auth.action";
 
-export default function Header() {
-  const user = {
-    name: "Shahzaib",
-    role: "admin",
-    avatar: "/avatars/shadcn.jpg",
-  };
+export default async function Header() {
+  const user = await getCurrentUser();
 
   return (
     <header className="flex h-16 shrink-0 justify-between items-center gap-4 px-4">
@@ -31,7 +28,11 @@ export default function Header() {
           <Bell className="size-5 text-muted-foreground transition-colors duration-300 group-hover:text-primary" />
         </Button>
 
-        <UserAccountMenu user={user} />
+        {user && (
+          <UserAccountMenu
+            user={{ ...user, avatarUrl: user.avatarUrl ?? null }}
+          />
+        )}
       </div>
     </header>
   );

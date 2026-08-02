@@ -10,7 +10,7 @@ import { revalidatePath } from "next/cache";
 import { nanoid } from "nanoid";
 import { formatDate } from "../helpers/date-fns";
 import { auth } from "@/auth";
-import { DashboardAnnouncement } from "@/components/pages/admin/page/announcements-calender-card";
+import { DashboardAnnouncement } from "@/components/pages/dashboards/announcements-calender-card";
 
 /**
  * Fetches announcements for the admin data table.

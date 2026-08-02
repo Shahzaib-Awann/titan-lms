@@ -3,7 +3,6 @@ import {
   LayoutDashboard,
   Users,
   BookOpen,
-  ClipboardList,
   FileText,
   FolderOpen,
   Calendar,
@@ -176,66 +175,14 @@ export const trainerNav: NavItem[] = [
     icon: LayoutDashboard,
   },
   {
-    title: "My Courses",
-    url: "/trainer/courses",
+    title: "My Batches",
+    url: "/trainer/batches",
     icon: BookOpen,
   },
   {
-    title: "Assignments",
-    url: "/trainer/assignments",
-    icon: FileText,
-    children: [
-      {
-        title: "Create Assignment",
-        url: "/trainer/assignments/create",
-      },
-      {
-        title: "Submissions",
-        url: "/trainer/assignments/submissions",
-      },
-    ],
-  },
-  {
-    title: "Quizzes",
-    url: "/trainer/quizzes",
-    icon: ClipboardList,
-    children: [
-      {
-        title: "Create Quiz",
-        url: "/trainer/quizzes/create",
-      },
-      {
-        title: "AI Quiz Generator",
-        url: "/trainer/quizzes/ai-generator",
-      },
-      {
-        title: "Results",
-        url: "/trainer/quizzes/results",
-      },
-    ],
-  },
-  {
-    title: "Content Library",
-    url: "/trainer/library",
-    icon: FolderOpen,
-    children: [
-      {
-        title: "Assets",
-        url: "/trainer/library/assets",
-      },
-      {
-        title: "Documents",
-        url: "/trainer/library/documents",
-      },
-      {
-        title: "Videos",
-        url: "/trainer/library/videos",
-      },
-      {
-        title: "Uploads",
-        url: "/trainer/library/uploads",
-      },
-    ],
+    title: "Schedule",
+    url: "/trainer/schedule",
+    icon: Clock,
   },
   {
     title: "Announcements",
@@ -366,5 +313,3 @@ const navConfig: Record<Role, NavItem[]> = {
 
 export const getNavByRole = (role?: string): NavItem[] =>
   navConfig[role?.toLowerCase() as Role] ?? [];
-
-

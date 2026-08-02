@@ -21,7 +21,7 @@ import { signOut } from "next-auth/react";
 const UserAccountMenu = ({
   user,
 }: {
-  user: { name: string; role: string; avatar: string };
+  user: { fullName: string; role: string; avatarUrl: string | null };
 }) => {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
@@ -52,12 +52,12 @@ const UserAccountMenu = ({
         "
       >
         <Avatar>
-          <AvatarImage src={user.avatar} alt={user.name} />
-          <AvatarFallback initial={user.name} />
+          <AvatarImage src={user.avatarUrl ?? undefined} alt={user.fullName} />
+          <AvatarFallback initial={user.fullName} />
         </Avatar>
         <div className="text-left pr-2 flex flex-col justify-center items-start">
           <p className="text-sm font-medium group-hover:text-primary-foreground transition-all duration-200 capitalize">
-            {user.name}
+            {user.fullName}
           </p>
         </div>
       </DropdownMenuTrigger>
@@ -72,12 +72,15 @@ const UserAccountMenu = ({
           <DropdownMenuLabel className="p-0 font-normal">
             <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
               <Avatar>
-                <AvatarImage src={user.avatar} alt={user.name} />
-                <AvatarFallback initial={user.name} />
+                <AvatarImage
+                  src={user.avatarUrl ?? undefined}
+                  alt={user.fullName}
+                />
+                <AvatarFallback initial={user.fullName} />
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate text-foreground font-medium capitalize">
-                  {user.name}
+                  {user.fullName}
                 </span>
                 <span className="truncate text-xs text-muted-foreground capitalize">
                   {user.role}

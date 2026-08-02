@@ -1,13 +1,54 @@
-import { PlusCircle } from "lucide-react";
+import {
+  BookOpen,
+  CalendarCheck,
+  PlusCircle,
+  UserCog,
+  Users,
+} from "lucide-react";
 import { MainBanner } from "@/components/ui/main-banner";
-import AdminStatsGrid from "@/components/pages/admin/page/admin-stats-grid";
 import AdminRecentUsers from "@/components/pages/admin/page/admin-recent-users";
 import AdminQuickActions from "@/components/pages/admin/page/admin-quick-actions";
 import AdminUserDistribution from "@/components/pages/admin/page/admin-user-distribution";
 import Link from "next/link";
-import AnnouncementsCalenderCard from "@/components/pages/admin/page/announcements-calender-card";
+import AnnouncementsCalenderCard from "@/components/pages/dashboards/announcements-calender-card";
+import { getAdminStats } from "@/lib/actions/dashboard.action";
+import DashboardStatsGrid from "@/components/pages/dashboards/stats-cards-grid";
 
-export default function AdminDashboard() {
+export default async function AdminDashboard() {
+  const result = await getAdminStats();
+  const data = result.data;
+
+  const stats = [
+    {
+      title: "Total Users",
+      value: data.usersCount,
+      icon: Users,
+      status: "Registered users",
+      color: "text-primary",
+    },
+    {
+      title: "Total Courses",
+      value: data.coursesCount,
+      icon: BookOpen,
+      status: "Published courses",
+      color: "text-primary",
+    },
+    {
+      title: "Active Enrollments",
+      value: data.activeEnrollmentsCount,
+      icon: CalendarCheck,
+      status: "Currently active",
+      color: "text-amber-500",
+    },
+    {
+      title: "Active Instructors",
+      value: data.activeInstructorsCount,
+      icon: UserCog,
+      status: "Currently active",
+      color: "text-emerald-500",
+    },
+  ];
+
   return (
     <div className="grid grid-cols-4 gap-8 p-6 lg:p-8 max-w-[1600px] mx-auto w-full animate-in fade-in duration-500">
       {/* Hero Welcome Section */}
@@ -38,7 +79,7 @@ export default function AdminDashboard() {
           </div>
         </MainBanner>
 
-        <AdminStatsGrid />
+        <DashboardStatsGrid success={result.success} cards={stats} />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 items-start gap-8">
           {/* Main Column - Recent Users */}

@@ -22,7 +22,7 @@ const sortLabel: Record<SortOption, string> = {
   desc: "Descending (Z–A)",
 };
 
-export function SyllabusFilters() {
+export function SearchSortFilterBar() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
