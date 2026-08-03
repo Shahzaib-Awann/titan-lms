@@ -188,7 +188,12 @@ export const moduleProgress = mysqlTable("module_progress", {
 
   completedAt: timestamp("completed_at"),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
-});
+}, (table) => [
+  unique("batch_lesson_progress_unique").on(
+    table.batchId,
+    table.lessonId,
+  ),
+]);
 
 // Student Batch Enrollments
 export const enrollments = mysqlTable("enrollments", {

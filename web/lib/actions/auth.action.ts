@@ -2,7 +2,7 @@
 
 import { eq, and, isNull } from "drizzle-orm";
 import { db } from "../db";
-import { assets, users } from "../db/schema";
+import { assets, trainerProfiles, users } from "../db/schema";
 import { auth } from "@/auth";
 import { Role, UserStatus } from "@/types/common";
 
@@ -80,10 +80,16 @@ export async function requireRole(role: Role) {
   return user;
 }
 
-
-export async function getCurrentUser(
-  { fresh = false }: { fresh?: boolean } = {}
-): Promise<{
+/**
+ * Returns the currently authenticated user.
+ *
+ * If `fresh` is true, the user data is re-fetched from the database,
+ * ignoring the cached session data. This is useful when user data
+ * may have changed outside the current request cycle.
+ */
+export async function getCurrentUser({
+  fresh = false,
+}: { fresh?: boolean } = {}): Promise<{
   id: string;
   fullName: string;
   role: Role;
@@ -122,4 +128,40 @@ export async function getCurrentUser(
     .limit(1);
 
   return user ?? null;
+}
+
+/**
+ * Returns trainer object if user is a logged in trainer with a valid profile.
+ *
+ * Throws an error if:
+ * - user is not logged in
+ * - user role is not trainer
+ * - trainer profile not found
+ */
+export async function requireTrainer() {
+  // Logged in trainer
+  const user = await requireRole("trainer");
+
+  // Trainer profile
+  const [trainer] = await db
+    .select({
+      id: trainerProfiles.id,
+    })
+    .from(trainerProfiles)
+    .where(
+      and(
+        eq(trainerProfiles.userId, user.id),
+        isNull(trainerProfiles.deletedAt),
+      ),
+    )
+    .limit(1);
+
+  if (!trainer) {
+    throw new Error("Trainer profile not found");
+  }
+
+  return {
+    user,
+    trainer,
+  };
 }

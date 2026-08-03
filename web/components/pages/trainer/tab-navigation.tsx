@@ -17,16 +17,17 @@ const TrainerTabNavigation = ({ batchId }: { batchId: string }) => {
       href: `/trainer/batches/${batchId}/progress`,
     },
     {
-      label: "Attendance",
-      href: `/trainer/batches/${batchId}/attendance`,
-    },
-    {
       label: "Students",
       href: `/trainer/batches/${batchId}/students`,
     },
     {
-      label: "Settings",
-      href: `/trainer/batches/${batchId}/settings`,
+      label: "Assignments",
+      href: `/trainer/batches/${batchId}/assignments`,
+    },
+
+    {
+      label: "Quizzes",
+      href: `/trainer/batches/${batchId}/quizzes`,
     },
   ];
 

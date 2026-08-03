@@ -1,15 +1,24 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { users, courses, trainerProfiles, enrollments, batchSchedules, courseBatches } from "@/lib/db/schema";
+import {
+  users,
+  courses,
+  trainerProfiles,
+  enrollments,
+  batchSchedules,
+  courseBatches,
+} from "@/lib/db/schema";
 import { format, getDay } from "date-fns";
-import { count, eq, isNull, desc, and, inArray, or, gte, sql } from "drizzle-orm";
+import { count, eq, isNull, desc, and, or, gte, sql } from "drizzle-orm";
 import { requireRole } from "./auth.action";
 import { TrainerBatch, TrainerBatchesResponse } from "@/types/dashboards";
 import { WeekDays } from "@/types/common";
 
 /**
- * Fetch admin dashboard statistics
+ * Fetches admin dashboard statistics.
+ *
+ * @returns User count, course count, active enrollments, and active instructors counts.
  */
 export async function getAdminStats() {
   try {
@@ -53,10 +62,7 @@ export async function getAdminStats() {
         })
         .from(enrollments)
         .where(
-          and(
-            eq(enrollments.status, "active"),
-            isNull(enrollments.deletedAt),
-          ),
+          and(eq(enrollments.status, "active"), isNull(enrollments.deletedAt)),
         ),
     ]);
 
@@ -65,12 +71,8 @@ export async function getAdminStats() {
       data: {
         usersCount: Number(usersCount[0]?.count ?? 0),
         coursesCount: Number(coursesCount[0]?.count ?? 0),
-        activeEnrollmentsCount: Number(
-          activeEnrollmentsCount[0]?.count ?? 0,
-        ),
-        activeInstructorsCount: Number(
-          activeInstructorsCount[0]?.count ?? 0,
-        ),
+        activeEnrollmentsCount: Number(activeEnrollmentsCount[0]?.count ?? 0),
+        activeInstructorsCount: Number(activeInstructorsCount[0]?.count ?? 0),
       },
     };
   } catch (error) {
@@ -90,11 +92,13 @@ export async function getAdminStats() {
 }
 
 /**
- * Fetch recently registered users
+ * Fetches recently registered users.
+ *
+ * @param limit - Maximum number of users to fetch.
+ * @returns Recent user details with formatted role, status, and join date.
  */
 export async function getRecentUsers(limit = 5) {
   try {
-
     // Fetch latest users
     const recentUsers = await db
       .select({
@@ -116,18 +120,11 @@ export async function getRecentUsers(limit = 5) {
       name: user.name,
       cnic: user.cnic,
 
-      role:
-        user.role.charAt(0).toUpperCase() +
-        user.role.slice(1),
+      role: user.role.charAt(0).toUpperCase() + user.role.slice(1),
 
-      status:
-        user.status.charAt(0).toUpperCase() +
-        user.status.slice(1),
+      status: user.status.charAt(0).toUpperCase() + user.status.slice(1),
 
-      joinDate: format(
-        new Date(user.joinDate),
-        "MMM dd, yyyy",
-      ),
+      joinDate: format(new Date(user.joinDate), "MMM dd, yyyy"),
     }));
 
     return {
@@ -146,11 +143,12 @@ export async function getRecentUsers(limit = 5) {
 }
 
 /**
- * Fetch user role distribution statistics
+ * Fetches user role distribution statistics.
+ *
+ * @returns User count grouped by roles.
  */
 export async function getUserDistribution() {
   try {
-
     const roleCounts = await db
       .select({
         role: users.role,
@@ -175,10 +173,7 @@ export async function getUserDistribution() {
       data: distribution,
     };
   } catch (error) {
-    console.error(
-      "Failed to fetch user distribution:",
-      error,
-    );
+    console.error("Failed to fetch user distribution:", error);
 
     return {
       success: false,
@@ -192,63 +187,15 @@ export async function getUserDistribution() {
   }
 }
 
-
+/**
+ * Fetches dashboard statistics for the authenticated trainer.
+ *
+ * @returns Trainer stats including courses, batches, students, and today's classes count.
+ */
 export async function getTrainerStats() {
   try {
-    // Ensure only trainers can access this endpoint
     const user = await requireRole("trainer");
 
-    // Find trainer profile
-    const [trainer] = await db
-      .select({
-        id: trainerProfiles.id,
-      })
-      .from(trainerProfiles)
-      .where(
-        and(
-          eq(trainerProfiles.userId, user.id),
-          isNull(trainerProfiles.deletedAt),
-        ),
-      )
-      .limit(1);
-
-    if (!trainer) {
-      return {
-        success: false,
-        message: "Trainer profile not found.",
-        data: {
-          coursesCount: 0,
-          batchesCount: 0,
-          studentsCount: 0,
-          totalClasses: 0,
-        },
-      };
-    }
-
-    // Fetch all active batches assigned to trainer
-const batches = await db
-  .select({
-    id: courseBatches.id,
-    courseId: courseBatches.courseId,
-  })
-  .from(courseBatches)
-  .where(
-    and(
-      eq(courseBatches.trainerId, trainer.id),
-      isNull(courseBatches.deletedAt),
-
-      // Batch is still active
-      or(
-        gte(courseBatches.endDate, sql`CURDATE()`),
-        isNull(courseBatches.endDate),
-      ),
-    ),
-  );
-
-    const batchIds = batches.map((b) => b.id);
-    const courseIds = [...new Set(batches.map((b) => b.courseId))];
-
-    // Today's weekday
     const weekdays = [
       "sunday",
       "monday",
@@ -261,64 +208,104 @@ const batches = await db
 
     const today = weekdays[getDay(new Date())];
 
-    const [
-      coursesCount,
-      studentsCount,
-      classesToday,
-    ] = await Promise.all([
-      courseIds.length
-        ? db
-            .select({ count: count() })
-            .from(courses)
-            .where(
-              and(
-                inArray(courses.id, courseIds),
-                isNull(courses.deletedAt),
-              ),
-            )
-        : [{ count: 0 }],
+    // Get trainer's valid active/future batches
+    const validBatches = db
+      .select({
+        batchId: courseBatches.id,
+        courseId: courseBatches.courseId,
+      })
+      .from(courseBatches)
+      .innerJoin(
+        trainerProfiles,
+        and(
+          eq(courseBatches.trainerId, trainerProfiles.id),
+          eq(trainerProfiles.userId, user.id),
+          isNull(trainerProfiles.deletedAt),
+        ),
+      )
+      .innerJoin(
+        courses,
+        and(eq(courseBatches.courseId, courses.id), isNull(courses.deletedAt)),
+      )
+      .where(
+        and(
+          isNull(courseBatches.deletedAt),
 
-      batchIds.length
-        ? db
-            .select({ count: count() })
-            .from(enrollments)
-            .where(
-              and(
-                inArray(enrollments.batchId, batchIds),
-                eq(enrollments.status, "active"),
-                isNull(enrollments.deletedAt),
-              ),
-            )
-        : [{ count: 0 }],
+          // Active today, future, or ongoing batches
+          or(
+            gte(courseBatches.endDate, sql`CURDATE()`),
+            isNull(courseBatches.endDate),
+          ),
+        ),
+      )
+      .as("active_batches");
 
-      batchIds.length
-        ? db
-            .select({ count: count() })
-            .from(batchSchedules)
-            .where(
-              and(
-                inArray(batchSchedules.batchId, batchIds),
-                eq(batchSchedules.weekday, today),
-              ),
-            )
-        : [{ count: 0 }],
+    const [batchRows, studentRows, classRows] = await Promise.all([
+      // Courses + batches count
+      db
+        .select({
+          coursesCount: sql<number>`
+              COUNT(DISTINCT ${validBatches.courseId})
+            `,
+          batchesCount: sql<number>`
+              COUNT(DISTINCT ${validBatches.batchId})
+            `,
+        })
+        .from(validBatches),
+
+      // Active enrolled students
+      db
+        .select({
+          studentsCount: sql<number>`
+              COUNT(DISTINCT ${enrollments.studentId})
+            `,
+        })
+        .from(validBatches)
+        .innerJoin(
+          enrollments,
+          and(
+            eq(enrollments.batchId, validBatches.batchId),
+            eq(enrollments.status, "active"),
+            isNull(enrollments.deletedAt),
+          ),
+        ),
+
+      // Today's classes
+      db
+        .select({
+          totalClasses: sql<number>`
+              COUNT(DISTINCT ${batchSchedules.id})
+            `,
+        })
+        .from(validBatches)
+        .innerJoin(
+          batchSchedules,
+          and(
+            eq(batchSchedules.batchId, validBatches.batchId),
+            eq(batchSchedules.weekday, today),
+          ),
+        ),
     ]);
 
     return {
       success: true,
       data: {
-        coursesCount: Number(coursesCount[0]?.count ?? 0),
-        batchesCount: batchIds.length,
-        studentsCount: Number(studentsCount[0]?.count ?? 0),
-        totalClasses: Number(classesToday[0]?.count ?? 0),
+        coursesCount: Number(batchRows[0]?.coursesCount ?? 0),
+
+        batchesCount: Number(batchRows[0]?.batchesCount ?? 0),
+
+        studentsCount: Number(studentRows[0]?.studentsCount ?? 0),
+
+        totalClasses: Number(classRows[0]?.totalClasses ?? 0),
       },
     };
   } catch (error) {
-    console.error("Failed to fetch trainer dashboard stats:", error);
+    console.error("getTrainerStats:", error);
 
     return {
       success: false,
       message: "Failed to fetch trainer dashboard statistics.",
+
       data: {
         coursesCount: 0,
         batchesCount: 0,
@@ -329,37 +316,20 @@ const batches = await db
   }
 }
 
-
+/**
+ * Fetches active trainers for selection options.
+ *
+ * @returns List of active trainer IDs and names.
+ */
 export async function getTrainerBatches(): Promise<TrainerBatchesResponse> {
   try {
-    // Protect route: only trainers allowed
+    // Protect route
     const user = await requireRole("trainer");
-
-    // Get trainer profile
-    const [trainer] = await db
-      .select({
-        id: trainerProfiles.id,
-      })
-      .from(trainerProfiles)
-      .where(
-        and(
-          eq(trainerProfiles.userId, user.id),
-          isNull(trainerProfiles.deletedAt),
-        ),
-      )
-      .limit(1);
-
-    if (!trainer) {
-      return {
-        success: false,
-        message: "Trainer profile not found.",
-        data: [],
-      };
-    }
 
     const today = new Date();
 
-    const batches = await db
+    // Fetch trainer batches with schedules
+    const rows = await db
       .select({
         batchId: courseBatches.id,
 
@@ -378,77 +348,90 @@ export async function getTrainerBatches(): Promise<TrainerBatchesResponse> {
       })
       .from(courseBatches)
       .innerJoin(
+        trainerProfiles,
+        and(
+          eq(courseBatches.trainerId, trainerProfiles.id),
+          eq(trainerProfiles.userId, user.id),
+          isNull(trainerProfiles.deletedAt),
+        ),
+      )
+      .innerJoin(
         courses,
-        eq(courseBatches.courseId, courses.id),
+        and(eq(courseBatches.courseId, courses.id), isNull(courses.deletedAt)),
       )
-      .leftJoin(
-        batchSchedules,
-        eq(courseBatches.id, batchSchedules.batchId),
-      )
+      .leftJoin(batchSchedules, eq(courseBatches.id, batchSchedules.batchId))
       .where(
-  and(
-    eq(courseBatches.trainerId, trainer.id),
-    isNull(courseBatches.deletedAt),
-    isNull(courses.deletedAt),
+        and(
+          isNull(courseBatches.deletedAt),
 
-    // Exclude batches that have already ended
-    or(
-      gte(courseBatches.endDate, today),
-      isNull(courseBatches.endDate),
-    ),
-  ),
-);
+          // Active or future batches only
+          or(gte(courseBatches.endDate, today), isNull(courseBatches.endDate)),
+        ),
+      );
 
+    if (!rows.length) {
+      return {
+        success: true,
+        data: [],
+      };
+    }
+
+    const batchMap = new Map<string, TrainerBatch>();
 
     // Group schedules by batch
-    const groupedBatches = batches.reduce<
-      Record<string, TrainerBatch>
-    >((acc, batch) => {
-      if (!acc[batch.batchId]) {
+    for (const row of rows) {
+      let batch = batchMap.get(row.batchId);
 
+      if (!batch) {
         const isScheduled =
-    batch.startDate &&
-    batch.startDate.getTime() > today.getTime();
+          row.startDate && row.startDate.getTime() > today.getTime();
 
-        acc[batch.batchId] = {
-          batchId: batch.batchId,
-          courseName: batch.courseName,
-          batchName: batch.batchName,
-          duration: batch.duration ?? 0,
-          startDate: batch.startDate,
-          endDate: batch.endDate ?? null,
+        batch = {
+          batchId: row.batchId,
+
+          courseName: row.courseName,
+
+          batchName: row.batchName,
+
+          duration: row.duration ?? 0,
+
+          startDate: row.startDate,
+
+          endDate: row.endDate ?? null,
+
           status: isScheduled ? "scheduled" : "live",
+
           schedule: [],
         };
+
+        batchMap.set(row.batchId, batch);
       }
 
-      if (batch.scheduleId) {
-        acc[batch.batchId].schedule.push({
-          id: batch.scheduleId,
-          weekday: batch.weekday as WeekDays,
-          startTime: batch.startTime!,
-          endTime: batch.endTime!,
-          room: batch.room,
+      if (row.scheduleId) {
+        batch.schedule.push({
+          id: row.scheduleId,
+
+          weekday: row.weekday as WeekDays,
+
+          startTime: row.startTime!,
+          endTime: row.endTime!,
+
+          room: row.room,
         });
       }
-
-      return acc;
-    }, {});
-
+    }
 
     return {
       success: true,
-      data: Object.values(groupedBatches),
+      data: Array.from(batchMap.values()),
     };
   } catch (error) {
-    console.error(
-      "Failed to fetch trainer batches:",
-      error,
-    );
+    console.error("getTrainerBatches:", error);
 
     return {
       success: false,
       message: "Failed to fetch trainer batches.",
+
       data: [],
     };
   }
