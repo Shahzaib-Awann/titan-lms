@@ -26,6 +26,7 @@ import {
   StudentForEnrollmentList,
 } from "../../../../app/(pages)/(dashboard)/admin/enrollments/create/page";
 import { formatDay, formatDate, formatTime } from "@/lib/helpers/date-fns";
+import { BatchScheduleItem } from "../../batch-schedule-item";
 
 interface EnrollmentConfirmationStepProps {
   selectedStudents: StudentForEnrollmentList[];
@@ -254,26 +255,7 @@ export const EnrollmentConfirmationStep = ({
                   </span>
                   <div className="space-y-2">
                     {selectedBatch.schedules.map((sch) => (
-                      <div
-                        key={sch.id}
-                        className="p-2.5 rounded-lg border border-border/60 bg-muted/20 flex items-center justify-between text-xs"
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-primary uppercase w-8">
-                            {formatDay(sch.weekday)}
-                          </span>
-                          <span className="text-sm text-muted-foreground font-medium">
-                            {formatTime(sch.startTime)} -{" "}
-                            {formatTime(sch.endTime)}
-                          </span>
-                        </div>
-                        {sch.room && (
-                          <span className="text-xs px-2 py-0.5 rounded bg-background font-mono border border-border/60 text-muted-foreground flex items-center gap-1">
-                            <MapPin className="size-2.5" />
-                            {sch.room}
-                          </span>
-                        )}
-                      </div>
+                      <BatchScheduleItem key={sch.id} schedule={sch} />
                     ))}
                   </div>
                 </div>

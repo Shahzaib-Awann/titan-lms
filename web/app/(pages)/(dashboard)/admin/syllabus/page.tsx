@@ -1,6 +1,6 @@
 import { SyllabusStatsCards } from "@/components/pages/admin/syllabus/syllabus-stats-cards";
 import { SyllabusCourseList } from "@/components/pages/admin/syllabus/syllabus-course-list";
-import { SyllabusFilters } from "@/components/pages/admin/syllabus/syllabus-filters";
+import { SearchSortFilterBar } from "@/components/pages/syllabus-filters";
 import {
   getSyllabusCoursesSummaryList,
   getSyllabusStats,
@@ -51,7 +51,7 @@ export default async function SyllabusPage({
       <SyllabusStatsCards stats={stats} />
 
       <Suspense fallback={<div>Loading...</div>}>
-        <SyllabusFilters />
+        <SearchSortFilterBar />
       </Suspense>
 
       {coursesError ? (

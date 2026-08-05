@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/table";
 
 import { getRecentUsers } from "@/lib/actions/dashboard.action";
+import { cn } from "@/lib/utils";
 
 const AdminRecentUsers = async () => {
   const result = await getRecentUsers();
@@ -126,13 +127,14 @@ const AdminRecentUsers = async () => {
 
                 <TableCell>
                   <Badge
-                    className={
+                    className={cn(
+                      "rounded-full",
                       user.status === "Active"
                         ? "border-0 bg-green/15 text-green"
                         : user.status === "Pending"
                           ? "border-0 bg-yellow/15 text-yellow"
-                          : "border-0 bg-red/15 text-red"
-                    }
+                          : "border-0 bg-red/15 text-red",
+                    )}
                   >
                     {user.status}
                   </Badge>

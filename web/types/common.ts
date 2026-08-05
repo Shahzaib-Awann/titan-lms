@@ -1,15 +1,4 @@
 /**
- * Defines pagination and filtering query parameters.
- */
-export interface PaginationQuery {
-  page?: number;
-  pageSize?: number;
-  search?: string;
-  sortBy?: string;
-  sortOrder?: "asc" | "desc";
-}
-
-/**
  * Defines available user roles.
  */
 export type Role = "admin" | "trainer" | "student";
@@ -38,3 +27,13 @@ export type EnrollmentStatus = "active" | "completed" | "transferred" | "dropped
  * Represents the current visibility period of an announcement.
  */
 export type AnnouncementStatus = "live" | "expired" | "scheduled";
+
+/**
+ * Represents the current status of a module.
+ */
+export type ModuleStatus = "completed" | "in_progress" | "not_started";
+
+/**
+ * Represents the current status of a lesson.
+ */
+export type LessonStatus = "completed" | "in_progress" | "not_started" | "skipped";

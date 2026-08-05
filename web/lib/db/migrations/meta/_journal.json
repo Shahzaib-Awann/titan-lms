@@ -127,6 +127,13 @@
       "when": 1785576007207,
       "tag": "0017_minor_supernaut",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "5",
+      "when": 1785759049870,
+      "tag": "0018_nebulous_giant_girl",
+      "breakpoints": true
     }
   ]
 }
