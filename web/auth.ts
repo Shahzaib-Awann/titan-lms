@@ -21,13 +21,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     signIn: "/sign-in",
   },
 
-  /**
-   * Configures session management strategy.
-   */
-  session: {
-    strategy: "jwt",
-  },
 
+  /**
+   * Configures authentication providers.
+   */
   providers: [
     Credentials({
       /**
@@ -52,6 +49,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
 
+  /**
+   * Defines authentication callbacks.
+   */
   callbacks: {
     /**
      * Adds user data to JWT token.
@@ -78,5 +78,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
       return session;
     },
+  },
+
+  /**
+   * Configures session management strategy.
+   */
+  session: {
+    strategy: "jwt",
+    maxAge: 60 * 60 * 24, // <- 24 hours
   },
 });
