@@ -127,6 +127,7 @@ export async function getCurrentUser({
     .where(eq(users.id, session.user.id))
     .limit(1);
 
+  console.log({ user });
   return user ?? null;
 }
 

@@ -1,25 +1,19 @@
-import { Bell, Search } from "lucide-react";
+import { Bell } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { ThemeToggle } from "./ui/theme-toggle";
 import UserAccountMenu from "./user-account-menu";
-import { Input } from "./ui/input";
 import { getCurrentUser } from "@/lib/actions/auth.action";
+import NavigationCommand from "./navigation-search";
 
 export default async function Header() {
   const user = await getCurrentUser();
-
   return (
     <header className="flex h-16 shrink-0 justify-between items-center gap-4 px-4">
       <SidebarTrigger className="text-white" />
 
-      <Input
-        type="text"
-        placeholder="Search for courses, lessons, quizzes..."
-        wrapperClassName="w-full max-w-lg"
-        icon={Search}
-      />
+      <NavigationCommand role={user?.role ?? "student"} />
 
       <div className="flex flex-row gap-4">
         <ThemeToggle />

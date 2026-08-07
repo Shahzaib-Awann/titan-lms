@@ -134,6 +134,13 @@
       "when": 1785759049870,
       "tag": "0018_nebulous_giant_girl",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "5",
+      "when": 1786008210407,
+      "tag": "0019_shallow_bill_hollister",
+      "breakpoints": true
     }
   ]
 }

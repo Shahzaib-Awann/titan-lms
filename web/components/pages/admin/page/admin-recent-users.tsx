@@ -85,7 +85,7 @@ const AdminRecentUsers = async () => {
 
               <TableHead>Status</TableHead>
 
-              <TableHead className="px-6 text-right">Joined</TableHead>
+              <TableHead className="px-6 text-right">Created At</TableHead>
             </TableRow>
           </TableHeader>
 

@@ -1,6 +1,16 @@
 "use server";
 
-import { and, desc, eq, gte, lte, isNull, or, isNotNull } from "drizzle-orm";
+import {
+  and,
+  desc,
+  eq,
+  gte,
+  lte,
+  isNull,
+  or,
+  isNotNull,
+  inArray,
+} from "drizzle-orm";
 import { db } from "@/lib/db";
 import { announcements, assets, users } from "@/lib/db/schema";
 import { AnnouncementFormSchema } from "../zod/admin.schema";
@@ -11,6 +21,7 @@ import { nanoid } from "nanoid";
 import { formatDate } from "../helpers/date-fns";
 import { auth } from "@/auth";
 import { DashboardAnnouncement } from "@/components/pages/dashboards/announcements-calender-card";
+import { AnnouncementStatus } from "@/types/common";
 
 /**
  * Fetches announcements for the admin data table.
@@ -181,7 +192,9 @@ export async function getAnnouncementByIdForEdit(id: string) {
 /**
  * Creates a new announcement or updates an existing one.
  */
-export async function saveAnnouncement(data: z.infer<typeof AnnouncementFormSchema>,) {
+export async function saveAnnouncement(
+  data: z.infer<typeof AnnouncementFormSchema>,
+) {
   try {
     // Validate the input data.
     const validated = AnnouncementFormSchema.parse(data);
@@ -314,11 +327,13 @@ export async function deleteAnnouncement(id: string) {
  * Calculates whether an announcement is live, scheduled, or expired
  * relative to today's date.
  */
-function calculateAnnouncementStatus(startDate: Date | string | null, endDate: Date | string | null, referenceDate: Date = new Date()) {
-  // If no start date is provided, the announcement is expired.
+function calculateAnnouncementStatus(
+  startDate: Date | string | null,
+  endDate: Date | string | null,
+  referenceDate: Date = new Date(),
+): AnnouncementStatus {
   if (!startDate) return "expired";
 
-  // Normalize the dates to compare only the date part.
   const today = new Date(referenceDate);
   today.setHours(0, 0, 0, 0);
 
@@ -327,21 +342,24 @@ function calculateAnnouncementStatus(startDate: Date | string | null, endDate: D
 
   if (today < start) return "scheduled";
 
-  if (endDate) {
-    const end = new Date(endDate);
-    end.setHours(23, 59, 59, 999);
-    if (today <= end) return "live";
-  } else {
-    if (today.getTime() === start.getTime()) return "live";
+  // Single-day announcement
+  if (!endDate) {
+    return today.getTime() === start.getTime() ? "live" : "expired";
   }
 
-  return "expired";
+  // Multi-day announcement
+  const end = new Date(endDate);
+  end.setHours(23, 59, 59, 999);
+
+  return today <= end ? "live" : "expired";
 }
 
 /**
  * Retrieves announcements for the dashboard based on the selected date.
  */
-export async function getDashboardAnnouncements(selectedDate: Date): Promise<DashboardAnnouncement[]> {
+export async function getDashboardAnnouncements(
+  selectedDate: Date,
+): Promise<DashboardAnnouncement[]> {
   // Authenticate User
   const session = await auth();
   const user = session?.user;
@@ -350,28 +368,37 @@ export async function getDashboardAnnouncements(selectedDate: Date): Promise<Das
     throw new Error("Unauthorized");
   }
 
-  // Check if the user is an admin.
   const isAdmin = user.role === "admin";
 
-  // Normalize the selected date.
   const targetDate = new Date(selectedDate);
+  targetDate.setHours(0, 0, 0, 0);
 
-  // Build the common query filters.
   const filters = [
     isNull(announcements.deletedAt),
 
+    // Trainers & students can only see public announcements.
     !isAdmin ? eq(announcements.isPublic, true) : undefined,
+
+    // Role-based audience filtering.
+    !isAdmin
+      ? inArray(
+          announcements.targetAudience,
+          user.role === "trainer" ? ["all", "trainers"] : ["all", "students"],
+        )
+      : undefined,
   ].filter(Boolean);
 
-  // Retrieve announcements that are active on the selected date.
   const selectedAnnouncements = await db
     .select()
     .from(announcements)
     .where(
       and(
         ...filters,
-        lte(announcements.startDate, targetDate), // Announcement must have started.
-        // Announcement must still be active.
+
+        // Announcement has started.
+        lte(announcements.startDate, targetDate),
+
+        // Still active.
         or(
           // Multi-day announcement.
           and(
@@ -387,13 +414,8 @@ export async function getDashboardAnnouncements(selectedDate: Date): Promise<Das
         ),
       ),
     )
-    .orderBy(
-      // Order by pinned status and start date.
-      desc(announcements.isPinned),
-      desc(announcements.startDate),
-    );
+    .orderBy(desc(announcements.isPinned), desc(announcements.startDate));
 
-  // Format the announcements for the dashboard.
   return selectedAnnouncements.map((announcement) => ({
     id: announcement.id,
     title: announcement.title,
@@ -406,5 +428,106 @@ export async function getDashboardAnnouncements(selectedDate: Date): Promise<Das
       announcement.endDate,
     ),
     ...(isAdmin && { isPublic: announcement.isPublic }),
+  }));
+}
+
+/**
+ * Get role-based announcements with filtering and ordering.
+ */
+export async function getRoleBasedAnnouncements(
+  audience: "trainer" | "student",
+): Promise<
+  {
+    id: string;
+    title: string;
+    description: string | null;
+    audience: "all" | "trainer" | "student";
+    isPinned: boolean;
+    startDate: Date;
+    endDate: Date | null;
+    createdBy: {
+      name: string;
+      avatarUrl: string | null;
+    };
+    status: AnnouncementStatus;
+  }[]
+> {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const rows = await db
+    .select({
+      id: announcements.id,
+      title: announcements.title,
+      description: announcements.description,
+
+      audience: announcements.targetAudience,
+      isPinned: announcements.isPinned,
+
+      startDate: announcements.startDate,
+      endDate: announcements.endDate,
+
+      createdBy: {
+        name: users.fullName,
+        avatarUrl: assets.url,
+      },
+    })
+    .from(announcements)
+    .leftJoin(users, eq(announcements.createdBy, users.id))
+    .leftJoin(assets, eq(users.avatarAssetId, assets.id))
+    .where(
+      and(
+        isNull(announcements.deletedAt),
+        inArray(
+          announcements.targetAudience,
+          audience === "trainer" ? ["all", "trainers"] : ["all", "students"],
+        ),
+        or(
+          // Upcoming
+          gte(announcements.startDate, today),
+
+          // Live (multi-day)
+          and(
+            isNotNull(announcements.endDate),
+            lte(announcements.startDate, today),
+            gte(announcements.endDate, today),
+          ),
+
+          // Live (single-day)
+          and(
+            isNull(announcements.endDate),
+            eq(announcements.startDate, today),
+          ),
+        ),
+      ),
+    )
+    .orderBy(desc(announcements.isPinned), desc(announcements.startDate));
+
+  return rows.map((announcement) => ({
+    id: announcement.id,
+    title: announcement.title,
+    description: announcement.description,
+
+    audience:
+      announcement.audience === "all"
+        ? "all"
+        : announcement.audience === "trainers"
+          ? "trainer"
+          : "student",
+
+    isPinned: announcement.isPinned,
+
+    startDate: announcement.startDate,
+    endDate: announcement.endDate,
+
+    createdBy: {
+      name: announcement.createdBy.name ?? "Unknown",
+      avatarUrl: announcement.createdBy.avatarUrl,
+    },
+
+    status: calculateAnnouncementStatus(
+      announcement.startDate,
+      announcement.endDate,
+    ),
   }));
 }
