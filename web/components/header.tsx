@@ -9,7 +9,6 @@ import { getCurrentUser } from "@/lib/actions/auth.action";
 
 export default async function Header() {
   const user = await getCurrentUser();
-
   return (
     <header className="flex h-16 shrink-0 justify-between items-center gap-4 px-4">
       <SidebarTrigger className="text-white" />

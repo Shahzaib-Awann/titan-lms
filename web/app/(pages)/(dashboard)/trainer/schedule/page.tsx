@@ -28,6 +28,7 @@ import {
   BatchScheduleCalendar,
   fetchTrainerCalendar,
 } from "@/lib/actions/schedule.action";
+import { formatTime } from "@/lib/helpers/date-fns";
 
 const MONTHS = [
   "January",
@@ -234,7 +235,8 @@ export default function SchedulePage() {
 
                       <div className="mt-3 flex items-center gap-1 text-xs">
                         <Clock3 className="size-3" />
-                        {event.startTime} - {event.endTime}
+                        {formatTime(event.startTime)} -{" "}
+                        {formatTime(event.endTime)}
                       </div>
 
                       {event.room && (
