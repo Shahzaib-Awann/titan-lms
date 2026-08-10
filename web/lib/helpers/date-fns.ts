@@ -1,4 +1,4 @@
-import { format, parse } from "date-fns";
+import { differenceInCalendarDays, format, isValid, parse } from "date-fns";
 
 /**
  * Formats a time string from 24-hour format to readable 12-hour format.
@@ -99,4 +99,24 @@ const normalizeDate = (
   date.setHours(0, 0, 0, 0);
 
   return date;
+};
+
+/**
+ * Calculates the number of days left until a given date.
+ *
+ * @param date The target date.
+ * @returns The number of days left, or null if the input date is invalid.
+ */
+export const getDaysLeft = (
+  date: Date | string | null | undefined,
+): number | null => {
+  if (!date) return null;
+
+  const parsedDate = typeof date === "string" ? new Date(date) : date;
+
+  if (!isValid(parsedDate)) {
+    return null;
+  }
+
+  return Math.max(0, differenceInCalendarDays(parsedDate, new Date()));
 };

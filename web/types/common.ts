@@ -37,3 +37,8 @@ export type ModuleStatus = "completed" | "in_progress" | "not_started";
  * Represents the current status of a lesson.
  */
 export type LessonStatus = "completed" | "in_progress" | "not_started" | "skipped";
+
+/**
+ * Represents the current status of an assignment.
+ */
+export type AssignmentStatus = "draft" | "published" | "closed";

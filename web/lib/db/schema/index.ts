@@ -11,6 +11,7 @@ import {
   time,
   unique,
   boolean,
+  foreignKey,
 } from "drizzle-orm/mysql-core";
 
 // Enums
@@ -21,6 +22,9 @@ export const weekdayEnum = mysqlEnum("weekday", ["monday","tuesday","wednesday",
 export const moduleProgressStatusEnum = mysqlEnum("module_progress_status", ["not_started", "in_progress", "completed", "skipped"]);
 export const enrollmentStatusEnum = mysqlEnum("enrollment_status", ["active", "completed", "transferred", "dropped", "suspended"]);
 export const announcementAudienceEnum = mysqlEnum("target_audience", ["all", "trainers", "students"]);
+export const assignmentStatusEnum = mysqlEnum("assignment_status", ["draft","published","closed"]);
+export const assignmentSubmissionStatusEnum = mysqlEnum("assignment_submission_status", ["not_submitted","submitted","late","graded","resubmitted"]);
+export const assignmentResourceTypeEnum = mysqlEnum("assignment_resource_type", ["assignment","assignment_submission"]);
 
 // Users table
 export const users = mysqlTable("users", {
@@ -235,3 +239,76 @@ export const announcements = mysqlTable("announcements", {
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
   deletedAt: timestamp("deleted_at"),
 });
+
+// Assignments
+export const assignments = mysqlTable("assignments", {
+  id: varchar("id", { length: 21 }).primaryKey(),
+
+  batchId: varchar("batch_id", { length: 21 }).notNull().references(() => courseBatches.id),
+
+  moduleId: varchar("module_id", { length: 21 }).references(() => courseModules.id),
+  lessonId: varchar("lesson_id", { length: 21 }).references(() => moduleLessons.id),
+
+  createdBy: varchar("created_by", { length: 21 }).notNull().references(() => users.id),
+
+  title: varchar("title", { length: 255 }).notNull(),
+  instructions: text("instructions"),
+
+  maxMarks: int("max_marks").notNull().default(100),
+  status: assignmentStatusEnum.notNull().default("draft"),
+
+  assignedAt: date("assigned_at").notNull(),
+  dueAt: date("due_at").notNull(),
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+  deletedAt: timestamp("deleted_at"),
+});
+
+
+// Assignment Submissions
+export const assignmentSubmissions = mysqlTable("assignment_submissions", {
+    id: varchar("id", { length: 21 }).primaryKey(),
+
+    assignmentId: varchar("assignment_id", { length: 21 }).notNull().references(() => assignments.id),
+    enrollmentId: varchar("enrollment_id", { length: 21 }).notNull().references(() => enrollments.id),
+
+    status: assignmentSubmissionStatusEnum.notNull().default("not_submitted"),
+    submittedAt: timestamp("submitted_at"),
+    submissionNote: text("submission_note"),
+
+    marksObtained: decimal("marks_obtained", { precision: 10, scale: 2}),
+    teacherFeedback: text("teacher_feedback"),
+
+    gradedBy: varchar("graded_by", { length: 21 }).references(() => users.id),
+    gradedAt: timestamp("graded_at"),
+
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+  }, (table) => [
+    unique("assignment_enrollment_unique").on(table.assignmentId, table.enrollmentId),
+  ],
+);
+
+
+// Assignment Reference Links
+export const assignmentReferenceLinks = mysqlTable("assignment_reference_links", {
+    id: varchar("id", { length: 21 }).primaryKey(),
+
+    assignmentId: varchar("assignment_id", { length: 21 }).notNull().references(() => assignments.id),
+    submissionId: varchar("submission_id", { length: 21 }),
+
+    resourceType: assignmentResourceTypeEnum.notNull(),
+
+    title: varchar("title", { length: 255 }).notNull(),
+    url: text("url").notNull(),
+
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  }, (table) => [
+    foreignKey({
+      columns: [table.submissionId],
+      foreignColumns: [assignmentSubmissions.id],
+      name: "assignment_reference_link_submission_fk",
+    }),
+  ]
+);

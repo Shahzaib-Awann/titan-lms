@@ -136,7 +136,7 @@ export function AdminForm({ data }: AdminFormProps) {
 
                 <label
                   htmlFor="avatar-upload"
-                  className="absolute bottom-0 right-0 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-primary text-white shadow-card hover:bg-[#6548F8]"
+                  className="absolute bottom-0 right-0 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-primary text-white shadow-card hover:bg-blurple-hover"
                 >
                   <Pencil size={14} />
                 </label>
