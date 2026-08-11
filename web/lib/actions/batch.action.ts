@@ -8,7 +8,6 @@ import {
   inArray,
   sql,
   or,
-  gte,
   like,
   asc,
   desc,
@@ -24,6 +23,7 @@ import {
   enrollments,
   moduleLessons,
   courseModules,
+  studentProfiles,
 } from "@/lib/db/schema";
 import { BatchFormSchema } from "@/lib/zod/admin.schema";
 import { requireRole, requireTrainer } from "./auth.action";
@@ -420,26 +420,17 @@ export async function deleteCourseBatch(id: string) {
   }
 }
 
-/**
- * Fetches active batches for a trainer.
- *
- * @param options - Optional search and sort filters.
- * @returns Active batch data with schedules, students, syllabus, and progress details.
- */
-export async function getTrainerActiveBatches(options?: {
+export async function getAssignedBatches(options?: {
   search?: string;
   sort?: "asc" | "desc";
 }) {
   const { search, sort = "asc" } = options ?? {};
 
   try {
-    // Get authenticated trainer
-    const { trainer } = await requireTrainer();
+    const user = await requireRole(["trainer", "student"]);
 
-    const today = new Date();
     const searchTerm = search?.trim();
 
-    // Build search condition once
     const searchCondition = searchTerm
       ? or(
           like(courseBatches.batchName, `%${searchTerm}%`),
@@ -448,42 +439,104 @@ export async function getTrainerActiveBatches(options?: {
         )
       : undefined;
 
-    // Execute all database operations in one transaction
     const result = await db.transaction(async (tx) => {
-      // Fetch active batches
-      const batches = await tx
-        .select({
-          batchId: courseBatches.id,
-          batchName: courseBatches.batchName,
+      let batches;
 
-          courseId: courses.id,
-          courseName: courses.title,
+      // ==========================================
+      // TRAINER
+      // ==========================================
+      if (user.role === "trainer") {
+        batches = await tx
+          .select({
+            batchId: courseBatches.id,
+            batchName: courseBatches.batchName,
 
-          duration: courses.durationWeeks,
+            courseId: courses.id,
+            courseName: courses.title,
 
-          startDate: courseBatches.startDate,
-          endDate: courseBatches.endDate,
-        })
-        .from(courseBatches)
-        .innerJoin(courses, eq(courseBatches.courseId, courses.id))
-        .where(
-          and(
-            eq(courseBatches.trainerId, trainer.id),
-            isNull(courseBatches.deletedAt),
-            or(
-              gte(courseBatches.endDate, today),
-              isNull(courseBatches.endDate),
+            duration: courses.durationWeeks,
+
+            startDate: courseBatches.startDate,
+            endDate: courseBatches.endDate,
+          })
+          .from(courseBatches)
+          .innerJoin(
+            trainerProfiles,
+            and(
+              eq(courseBatches.trainerId, trainerProfiles.id),
+              eq(trainerProfiles.userId, user.id),
+              isNull(trainerProfiles.deletedAt),
             ),
-            searchCondition,
-          ),
-        )
-        .orderBy(
-          sort === "asc"
-            ? asc(courseBatches.batchName)
-            : desc(courseBatches.batchName),
-        );
+          )
+          .innerJoin(
+            courses,
+            and(
+              eq(courseBatches.courseId, courses.id),
+              isNull(courses.deletedAt),
+            ),
+          )
+          .where(and(isNull(courseBatches.deletedAt), searchCondition))
+          .orderBy(
+            sort === "asc"
+              ? asc(courseBatches.batchName)
+              : desc(courseBatches.batchName),
+          );
+      }
 
-      if (!batches.length) {
+      // ==========================================
+      // STUDENT
+      // ==========================================
+      else {
+        batches = await tx
+          .select({
+            batchId: courseBatches.id,
+            batchName: courseBatches.batchName,
+
+            courseId: courses.id,
+            courseName: courses.title,
+
+            duration: courses.durationWeeks,
+
+            startDate: courseBatches.startDate,
+            endDate: courseBatches.endDate,
+          })
+          .from(enrollments)
+          .innerJoin(
+            studentProfiles,
+            and(
+              eq(enrollments.studentId, studentProfiles.id),
+              eq(studentProfiles.userId, user.id),
+              isNull(studentProfiles.deletedAt),
+            ),
+          )
+          .innerJoin(courseBatches, eq(enrollments.batchId, courseBatches.id))
+          .innerJoin(
+            courses,
+            and(
+              eq(courseBatches.courseId, courses.id),
+              isNull(courses.deletedAt),
+            ),
+          )
+          .where(
+            and(
+              isNull(enrollments.deletedAt),
+              isNull(courseBatches.deletedAt),
+              searchCondition,
+            ),
+          )
+          .orderBy(
+            sort === "asc"
+              ? asc(courseBatches.batchName)
+              : desc(courseBatches.batchName),
+          );
+      }
+
+      // Remove possible duplicate batches
+      const uniqueBatches = Array.from(
+        new Map(batches.map((batch) => [batch.batchId, batch])).values(),
+      );
+
+      if (!uniqueBatches.length) {
         return {
           batches: [],
           schedules: [],
@@ -493,72 +546,87 @@ export async function getTrainerActiveBatches(options?: {
         };
       }
 
-      const batchIds = [...new Set(batches.map((b) => b.batchId))];
-      const courseIds = [...new Set(batches.map((b) => b.courseId))];
+      const batchIds = uniqueBatches.map((batch) => batch.batchId);
+      const courseIds = [
+        ...new Set(uniqueBatches.map((batch) => batch.courseId)),
+      ];
 
-      // Fetch related data in parallel
+      // ==========================================
+      // RELATED DATA
+      // ==========================================
+
+      const schedulesPromise = tx
+        .select()
+        .from(batchSchedules)
+        .where(inArray(batchSchedules.batchId, batchIds));
+
+      const syllabusPromise = tx
+        .select({
+          courseId: courses.id,
+
+          moduleCount: sql<number>`
+            COUNT(DISTINCT ${courseModules.id})
+          `,
+
+          lessonCount: sql<number>`
+            COUNT(DISTINCT ${moduleLessons.id})
+          `,
+        })
+        .from(courses)
+        .leftJoin(courseModules, eq(courseModules.courseId, courses.id))
+        .leftJoin(moduleLessons, eq(moduleLessons.moduleId, courseModules.id))
+        .where(inArray(courses.id, courseIds))
+        .groupBy(courses.id);
+
+      const completedLessonsPromise = tx
+        .select({
+          batchId: moduleProgress.batchId,
+
+          completed: sql<number>`
+            COUNT(DISTINCT ${moduleProgress.lessonId})
+          `,
+        })
+        .from(moduleProgress)
+        .where(
+          and(
+            inArray(moduleProgress.batchId, batchIds),
+            eq(moduleProgress.status, "completed"),
+          ),
+        )
+        .groupBy(moduleProgress.batchId);
+
+      // Student count is only required for trainer
+      const studentCountsPromise =
+        user.role === "trainer"
+          ? tx
+              .select({
+                batchId: enrollments.batchId,
+
+                studentCount: sql<number>`
+                  COUNT(DISTINCT ${enrollments.studentId})
+                `,
+              })
+              .from(enrollments)
+              .where(
+                and(
+                  inArray(enrollments.batchId, batchIds),
+                  eq(enrollments.status, "active"),
+                  isNull(enrollments.deletedAt),
+                ),
+              )
+              .groupBy(enrollments.batchId)
+          : Promise.resolve([]);
+
       const [schedules, syllabusCounts, studentCounts, completedLessons] =
         await Promise.all([
-          tx
-            .select()
-            .from(batchSchedules)
-            .where(inArray(batchSchedules.batchId, batchIds)),
-
-          tx
-            .select({
-              courseId: courses.id,
-              moduleCount: sql<number>`
-              COUNT(DISTINCT ${courseModules.id})
-            `,
-              lessonCount: sql<number>`
-              COUNT(DISTINCT ${moduleLessons.id})
-            `,
-            })
-            .from(courses)
-            .leftJoin(courseModules, eq(courseModules.courseId, courses.id))
-            .leftJoin(
-              moduleLessons,
-              eq(moduleLessons.moduleId, courseModules.id),
-            )
-            .where(inArray(courses.id, courseIds))
-            .groupBy(courses.id),
-
-          tx
-            .select({
-              batchId: enrollments.batchId,
-              studentCount: sql<number>`
-              COUNT(DISTINCT ${enrollments.studentId})
-            `,
-            })
-            .from(enrollments)
-            .where(
-              and(
-                inArray(enrollments.batchId, batchIds),
-                eq(enrollments.status, "active"),
-                isNull(enrollments.deletedAt),
-              ),
-            )
-            .groupBy(enrollments.batchId),
-
-          tx
-            .select({
-              batchId: moduleProgress.batchId,
-              completed: sql<number>`
-              COUNT(DISTINCT ${moduleProgress.lessonId})
-            `,
-            })
-            .from(moduleProgress)
-            .where(
-              and(
-                inArray(moduleProgress.batchId, batchIds),
-                eq(moduleProgress.status, "completed"),
-              ),
-            )
-            .groupBy(moduleProgress.batchId),
+          schedulesPromise,
+          syllabusPromise,
+          studentCountsPromise,
+          completedLessonsPromise,
         ]);
 
       return {
-        batches,
+        batches: uniqueBatches,
         schedules,
         syllabusCounts,
         studentCounts,
@@ -574,16 +642,18 @@ export async function getTrainerActiveBatches(options?: {
       completedLessons,
     } = result;
 
-    // No active batches
     if (!batches.length) {
       return {
         success: true,
-        message: "No active batches",
+        message: "No batches found.",
         data: [],
       };
     }
 
-    // Schedule lookup
+    // ==========================================
+    // SCHEDULE MAP
+    // ==========================================
+
     const scheduleMap = new Map<string, typeof schedules>();
 
     for (const schedule of schedules) {
@@ -596,7 +666,10 @@ export async function getTrainerActiveBatches(options?: {
       }
     }
 
-    // Syllabus lookup
+    // ==========================================
+    // SYLLABUS MAP
+    // ==========================================
+
     const syllabusMap = new Map(
       syllabusCounts.map((item) => [
         item.courseId,
@@ -607,17 +680,26 @@ export async function getTrainerActiveBatches(options?: {
       ]),
     );
 
-    // Student lookup
+    // ==========================================
+    // STUDENT COUNT MAP
+    // ==========================================
+
     const studentMap = new Map(
       studentCounts.map((item) => [item.batchId, Number(item.studentCount)]),
     );
 
-    // Progress lookup
+    // ==========================================
+    // PROGRESS MAP
+    // ==========================================
+
     const progressMap = new Map(
       completedLessons.map((item) => [item.batchId, Number(item.completed)]),
     );
 
-    // Build response
+    // ==========================================
+    // BUILD RESPONSE
+    // ==========================================
+
     const data = batches.map((batch) => {
       const syllabus = syllabusMap.get(batch.courseId) ?? {
         moduleCount: 0,
@@ -626,7 +708,7 @@ export async function getTrainerActiveBatches(options?: {
 
       const completed = progressMap.get(batch.batchId) ?? 0;
 
-      return {
+      const baseBatch = {
         batchId: batch.batchId,
         batchName: batch.batchName,
 
@@ -641,29 +723,35 @@ export async function getTrainerActiveBatches(options?: {
         moduleCount: syllabus.moduleCount,
         lessonCount: syllabus.lessonCount,
 
-        studentCount: studentMap.get(batch.batchId) ?? 0,
-
         progressPercentage:
           syllabus.lessonCount === 0
             ? 0
             : Math.round((completed / syllabus.lessonCount) * 100),
 
         schedule: scheduleMap.get(batch.batchId) ?? [],
+
+        studentCount:
+          user.role === "trainer"
+            ? (studentMap.get(batch.batchId) ?? 0)
+            : undefined,
       };
+
+      // Student does NOT get student count
+      return baseBatch;
     });
 
     return {
       success: true,
-      message: "Trainer active batches fetched successfully",
+      message: "Dashboard batches fetched successfully.",
       data,
     };
   } catch (error) {
-    console.error("getTrainerActiveBatches:", error);
+    console.error("getDashboardBatches:", error);
 
     return {
       success: false,
-      message: "Failed to fetch trainer batches",
-      error: error instanceof Error ? error.message : "Unknown error",
+      message: "Failed to fetch dashboard batches.",
+      data: [],
     };
   }
 }

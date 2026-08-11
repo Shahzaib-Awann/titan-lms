@@ -5,16 +5,16 @@ import { MainBanner } from "@/components/ui/main-banner";
 import { getCurrentUser } from "@/lib/actions/auth.action";
 import {
   getDashboardBatches,
-  getTrainerStats,
+  getStudentStats,
 } from "@/lib/actions/dashboard.action";
-import { BookOpen, CalendarDays, Clock, Layers3, Users } from "lucide-react";
+import { BookOpen, Clock, Layers3, Users } from "lucide-react";
 import Link from "next/link";
 import React from "react";
 
-const TrainerDashboardPage = async () => {
+const StudentDasboardPage = async () => {
   const [user, result, batchesResponse] = await Promise.all([
     getCurrentUser(),
-    getTrainerStats(),
+    getStudentStats(),
     getDashboardBatches(),
   ]);
 
@@ -22,32 +22,25 @@ const TrainerDashboardPage = async () => {
 
   const stats = [
     {
-      title: "My Courses",
-      value: data.coursesCount,
+      title: "Enrolled Batches",
+      value: data.activeBatches,
       icon: BookOpen,
-      status: "Assigned courses",
+      status: "Enrolled batches",
       color: "text-primary",
     },
     {
-      title: "My Batches",
-      value: data.batchesCount,
+      title: "Completed Batches",
+      value: data.completedBatches,
       icon: Layers3,
-      status: "Active batches",
+      status: "Completed batches",
       color: "text-violet-500",
     },
     {
-      title: "My Students",
-      value: data.studentsCount,
-      icon: Users,
-      status: "Active students",
-      color: "text-emerald-500",
-    },
-    {
       title: "Today's Classes",
-      value: data.totalClasses,
-      icon: CalendarDays,
+      value: data.todayClasses,
+      icon: Users,
       status: "Scheduled today",
-      color: "text-amber-500",
+      color: "text-emerald-500",
     },
   ];
 
@@ -65,14 +58,13 @@ const TrainerDashboardPage = async () => {
             </h1>
 
             <p className="mb-8 max-w-2xl text-lg leading-relaxed text-white/80">
-              Ready to inspire and guide your learners today? Review your
-              schedule, stay on top of your upcoming training sessions, and make
-              the most of your day.
+              Ready to start learning? Review your active courses and make the
+              most of your day.
             </p>
 
             <div className="flex flex-wrap gap-4">
               <Link
-                href="/trainer/schedule"
+                href="/student/schedule"
                 className="flex h-12 items-center gap-2 rounded-xl bg-white px-6 font-semibold text-[#7658FF] shadow-sm transition-all hover:scale-[1.02] hover:bg-white/90"
               >
                 <Clock className="h-5 w-5" />
@@ -85,15 +77,14 @@ const TrainerDashboardPage = async () => {
         <DashboardStatsGrid
           success={result.success}
           cards={stats}
-          className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4"
+          className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"
         />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 items-start gap-8">
-          {/* Main Column - Recent Users */}
           <div className="lg:col-span-3 flex flex-col gap-8">
             <BatchesCardsGrid
               success={batchesResponse.success}
-              role={"trainer"}
+              role="student"
               batches={batchesResponse.data}
             />
           </div>
@@ -107,4 +98,4 @@ const TrainerDashboardPage = async () => {
   );
 };
 
-export default TrainerDashboardPage;
+export default StudentDasboardPage;

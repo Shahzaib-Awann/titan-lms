@@ -13,9 +13,10 @@ type StatCard = {
 type StatsGridProps = {
   success: boolean;
   cards: StatCard[];
+  className?: string;
 };
 
-const DashboardStatsGrid = ({ success, cards }: StatsGridProps) => {
+const DashboardStatsGrid = ({ success, cards, className }: StatsGridProps) => {
   return (
     <div className="space-y-6">
       {!success && (
@@ -27,7 +28,7 @@ const DashboardStatsGrid = ({ success, cards }: StatsGridProps) => {
         </Alert>
       )}
 
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <div className={className}>
         {cards.map((stat) => {
           const Icon = stat.icon;
 

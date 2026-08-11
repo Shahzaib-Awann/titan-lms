@@ -34,7 +34,7 @@ export function NavMain({ role }: { role: Role }) {
 
   // Checks if a menu item matches the current route
   const isRouteActive = (url: string) => {
-    return ["/admin", "/trainer"].includes(url)
+    return ["/admin", "/trainer", "/student"].includes(url)
       ? pathname === url
       : pathname.startsWith(url);
   };

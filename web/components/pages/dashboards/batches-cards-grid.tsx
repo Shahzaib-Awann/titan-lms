@@ -12,16 +12,22 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 import { formatDate, getEntityStatus } from "@/lib/helpers/date-fns";
-import { getTrainerBatches } from "@/lib/actions/dashboard.action";
-import { TrainerBatchesResponse } from "@/types/dashboards";
 import { Badge } from "@/components/ui/badge";
 import { BatchScheduleItem } from "../batch-schedule-item";
+import { DashboardBatch } from "@/types/dashboards";
+import { Role } from "@/types/common";
 
-const BatchesCardsGrid = async () => {
-  const batchesResponse: TrainerBatchesResponse = await getTrainerBatches();
-
-  const success = batchesResponse?.success;
-  const batches = batchesResponse?.data ?? [];
+const BatchesCardsGrid = ({
+  success,
+  role,
+  batches,
+}: {
+  success: boolean;
+  role: Exclude<Role, "admin">;
+  batches: DashboardBatch[];
+}) => {
+  const isTrainer = role === "trainer";
+  const batchesUrl = isTrainer ? "/trainer/batches" : "/student/my-courses";
 
   return (
     <section className="space-y-6">
@@ -30,12 +36,12 @@ const BatchesCardsGrid = async () => {
           <h3 className="text-xl font-semibold">My Batches</h3>
 
           <p className="mt-1 text-sm text-muted-foreground">
-            Manage your active teaching batches.
+            View and manage your batches, schedules, and learning activities.
           </p>
         </div>
 
         <Link
-          href="/trainer/batches"
+          href={batchesUrl}
           className="text-sm font-medium text-primary hover:underline"
         >
           View All
@@ -141,12 +147,12 @@ const BatchesCardsGrid = async () => {
                       ))}
                     </div>
 
-                    <Link href={`/trainer/batches/${batch.batchId}`}>
+                    <Link href={`${batchesUrl}/${batch.batchId}`}>
                       <Button
                         className="mt-6 w-full cursor-pointer"
                         variant="glass"
                       >
-                        Manage Batch
+                        {isTrainer ? "Manage Batch" : "View Course"}
                         <ArrowRight className="ml-2 h-4 w-4" />
                       </Button>
                     </Link>

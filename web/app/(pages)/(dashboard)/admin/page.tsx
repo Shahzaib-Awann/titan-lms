@@ -13,8 +13,10 @@ import Link from "next/link";
 import AnnouncementsCalenderCard from "@/components/pages/dashboards/announcements-calender-card";
 import { getAdminStats } from "@/lib/actions/dashboard.action";
 import DashboardStatsGrid from "@/components/pages/dashboards/stats-cards-grid";
+import { getCurrentUser } from "@/lib/actions/auth.action";
 
 export default async function AdminDashboard() {
+  const user = await getCurrentUser();
   const result = await getAdminStats();
   const data = result.data;
 
@@ -56,7 +58,10 @@ export default async function AdminDashboard() {
         <MainBanner>
           <div className="max-w-3xl">
             <h1 className="mb-4 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
-              Welcome back, Admin
+              Welcome back,
+              <span className="underline underline-offset-8">
+                {`${user?.fullName ?? "Guest"}!`}
+              </span>
             </h1>
 
             <p className="mb-8 max-w-2xl text-lg leading-relaxed text-white/80">

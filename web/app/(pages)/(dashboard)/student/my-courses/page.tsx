@@ -10,7 +10,7 @@ const BatchesPage = async ({
 }) => {
   const { search, sort } = await searchParams;
 
-  return <BatchesPageContent role="trainer" search={search} sort={sort} />;
+  return <BatchesPageContent role="student" search={search} sort={sort} />;
 };
 
 export default BatchesPage;
