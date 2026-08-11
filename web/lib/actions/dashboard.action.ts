@@ -11,7 +11,7 @@ import {
   studentProfiles,
 } from "@/lib/db/schema";
 import { format, getDay } from "date-fns";
-import { count, eq, isNull, desc, and, or, gte, sql } from "drizzle-orm";
+import { count, eq, isNull, desc, and, or, gte, sql, exists, asc } from "drizzle-orm";
 import { requireRole } from "./auth.action";
 import { DashboardBatch, DashboardBatchesResponse } from "@/types/dashboards";
 import { WeekDays } from "@/types/common";
@@ -318,124 +318,128 @@ export async function getTrainerStats() {
 }
 
 
+/**
+* Fetches all batches accessible to the current user.
+*
+* @returns Accessible batches with course and schedule details.
+*/
 export async function getDashboardBatches(): Promise<DashboardBatchesResponse> {
   try {
+    // Authorize User
     const user = await requireRole(["trainer", "student"]);
 
-    let rows;
+    // Access Condition
+    const accessCondition =
+      user.role === "trainer"
+        ? exists(
+            // Check if the batch belongs to the logged-in trainer.
+            db
+              .select({ id: trainerProfiles.id })
+              .from(trainerProfiles)
+              .where(
+                and(
+                  eq(
+                    trainerProfiles.id,
+                    courseBatches.trainerId,
+                  ),
+                  eq(trainerProfiles.userId, user.id),
+                  isNull(trainerProfiles.deletedAt),
+                ),
+              ),
+          )
+        : exists(
+            // Check if the logged-in student is enrolled in the batch.
+            db
+              .select({ id: enrollments.id })
+              .from(enrollments)
+              .innerJoin(
+                studentProfiles,
+                and(
+                  eq(
+                    enrollments.studentId,
+                    studentProfiles.id,
+                  ),
+                  eq(studentProfiles.userId, user.id),
+                  isNull(studentProfiles.deletedAt),
+                ),
+              )
+              .where(
+                and(
+                  eq(
+                    enrollments.batchId,
+                    courseBatches.id,
+                  ),
+                  isNull(enrollments.deletedAt),
+                ),
+              ),
+          );
 
-    // =========================
-    // TRAINER
-    // =========================
-    if (user.role === "trainer") {
-      rows = await db
-        .select({
-          batchId: courseBatches.id,
+    // Fetch all batches accessible to the current user.
+    const rows = await db
+      .select({
+        batchId: courseBatches.id,
 
-          courseName: courses.title,
-          duration: courses.durationWeeks,
+        courseName: courses.title,
+        duration: courses.durationWeeks,
 
-          batchName: courseBatches.batchName,
-          startDate: courseBatches.startDate,
-          endDate: courseBatches.endDate,
+        batchName: courseBatches.batchName,
+        startDate: courseBatches.startDate,
+        endDate: courseBatches.endDate,
 
-          scheduleId: batchSchedules.id,
-          weekday: batchSchedules.weekday,
-          startTime: batchSchedules.startTime,
-          endTime: batchSchedules.endTime,
-          room: batchSchedules.room,
-        })
-        .from(courseBatches)
-        .innerJoin(
-          trainerProfiles,
-          and(
-            eq(courseBatches.trainerId, trainerProfiles.id),
-            eq(trainerProfiles.userId, user.id),
-            isNull(trainerProfiles.deletedAt),
+        scheduleId: batchSchedules.id,
+        weekday: batchSchedules.weekday,
+        startTime: batchSchedules.startTime,
+        endTime: batchSchedules.endTime,
+        room: batchSchedules.room,
+      })
+      .from(courseBatches)
+      .innerJoin(
+        courses,
+        and(
+          eq(
+            courseBatches.courseId,
+            courses.id,
           ),
-        )
-        .innerJoin(
-          courses,
-          and(
-            eq(courseBatches.courseId, courses.id),
-            isNull(courses.deletedAt),
-          ),
-        )
-        .leftJoin(
-          batchSchedules,
-          eq(courseBatches.id, batchSchedules.batchId),
-        )
-        .where(isNull(courseBatches.deletedAt));
-    }
+          isNull(courses.deletedAt),
+        ),
+      )
+      .leftJoin(
+        batchSchedules,
+        eq(
+          courseBatches.id,
+          batchSchedules.batchId,
+        ),
+      )
+      .where(
+        and(
+          isNull(courseBatches.deletedAt),
+          accessCondition,
+        ),
+      )
+      .orderBy(
+        asc(courseBatches.batchName),
+        asc(batchSchedules.weekday),
+        asc(batchSchedules.startTime),
+      );
 
-    // =========================
-    // STUDENT
-    // =========================
-    else {
-      rows = await db
-        .select({
-          batchId: courseBatches.id,
-
-          courseName: courses.title,
-          duration: courses.durationWeeks,
-
-          batchName: courseBatches.batchName,
-          startDate: courseBatches.startDate,
-          endDate: courseBatches.endDate,
-
-          scheduleId: batchSchedules.id,
-          weekday: batchSchedules.weekday,
-          startTime: batchSchedules.startTime,
-          endTime: batchSchedules.endTime,
-          room: batchSchedules.room,
-        })
-        .from(enrollments)
-        .innerJoin(
-          studentProfiles,
-          and(
-            eq(enrollments.studentId, studentProfiles.id),
-            eq(studentProfiles.userId, user.id),
-            isNull(studentProfiles.deletedAt),
-          ),
-        )
-        .innerJoin(
-          courseBatches,
-          eq(enrollments.batchId, courseBatches.id),
-        )
-        .innerJoin(
-          courses,
-          and(
-            eq(courseBatches.courseId, courses.id),
-            isNull(courses.deletedAt),
-          ),
-        )
-        .leftJoin(
-          batchSchedules,
-          eq(courseBatches.id, batchSchedules.batchId),
-        )
-        .where(
-          and(
-            isNull(enrollments.deletedAt),
-            isNull(courseBatches.deletedAt),
-          ),
-        );
-    }
-
-    if (!rows.length) {
+    // Return an empty list when no batches are found.
+    if (rows.length === 0) {
       return {
         success: true,
         data: [],
       };
     }
 
+    // Group multiple database rows into one batch object.
     const batchMap = new Map<string, DashboardBatch>();
 
-    // =========================
-    // GROUP BATCHES
-    // =========================
+    // Iterate over each row and group them by batchId.
     for (const row of rows) {
+
+      // Check if this batch was already created.
       let batch = batchMap.get(row.batchId);
 
+      // Create a new batch object if it doesn't exist.
       if (!batch) {
         batch = {
           batchId: row.batchId,
@@ -454,6 +458,7 @@ export async function getDashboardBatches(): Promise<DashboardBatchesResponse> {
         batchMap.set(row.batchId, batch);
       }
 
+      // Add the schedule only when one exists.
       if (row.scheduleId) {
         batch.schedule.push({
           id: row.scheduleId,
@@ -470,7 +475,7 @@ export async function getDashboardBatches(): Promise<DashboardBatchesResponse> {
       data: Array.from(batchMap.values()),
     };
   } catch (error) {
-    console.error("getDashboardBatches:", error);
+    console.error("getDashboardBatches failed:", error);
 
     return {
       success: false,
@@ -482,10 +487,17 @@ export async function getDashboardBatches(): Promise<DashboardBatchesResponse> {
 
 
 
+/**
+* Fetches dashboard statistics for the current student.
+*
+* @returns Active batches, completed batches, and today's classes.
+*/
 export async function getStudentStats() {
   try {
+    // Authorize User.
     const user = await requireRole("student");
 
+    // Define weekday names matching JavaScript's getDay() values.
     const weekdays = [
       "sunday",
       "monday",
@@ -496,103 +508,82 @@ export async function getStudentStats() {
       "saturday",
     ] as const;
 
+    // Get today's weekday name.
     const today = weekdays[getDay(new Date())];
 
-    // Get student's profile
-    const student = db
+    // Fetch all dashboard statistics in one query.
+    const [stats] = await db
       .select({
-        studentId: studentProfiles.id,
+        // Count unique batches where the student is active.
+        activeBatches: sql<number>`
+          COUNT(
+            DISTINCT CASE
+              WHEN ${enrollments.status} = 'active'
+              THEN ${enrollments.batchId}
+            END
+          )
+        `,
+
+        // Count unique batches where the student has completed enrollment.
+        completedBatches: sql<number>`
+          COUNT(
+            DISTINCT CASE
+              WHEN ${enrollments.status} = 'completed'
+              THEN ${enrollments.batchId}
+            END
+          )
+        `,
+
+        // Count today's scheduled classes for active enrollments.
+        todayClasses: sql<number>`
+          COUNT(
+            DISTINCT CASE
+              WHEN ${enrollments.status} = 'active'
+              THEN ${batchSchedules.id}
+            END
+          )
+        `,
       })
-      .from(studentProfiles)
-      .where(
+      .from(enrollments)
+      .innerJoin(
+        studentProfiles,
         and(
+          eq(enrollments.studentId, studentProfiles.id),
           eq(studentProfiles.userId, user.id),
           isNull(studentProfiles.deletedAt),
         ),
       )
-      .as("student");
-
-    const [activeRows, completedRows, classRows] = await Promise.all([
-      // Active batches
-      db
-        .select({
-          activeBatches: sql<number>`
-            COUNT(DISTINCT ${enrollments.batchId})
-          `,
-        })
-        .from(enrollments)
-        .innerJoin(
-          student,
-          eq(enrollments.studentId, student.studentId),
-        )
-        .where(
-          and(
-            eq(enrollments.status, "active"),
-            isNull(enrollments.deletedAt),
+      .leftJoin(
+        batchSchedules,
+        and(
+          eq(
+            batchSchedules.batchId,
+            enrollments.batchId,
           ),
+          eq(batchSchedules.weekday, today),
         ),
+      )
+      .where(
+        isNull(enrollments.deletedAt),
+      );
 
-      // Completed batches
-      db
-        .select({
-          completedBatches: sql<number>`
-            COUNT(DISTINCT ${enrollments.batchId})
-          `,
-        })
-        .from(enrollments)
-        .innerJoin(
-          student,
-          eq(enrollments.studentId, student.studentId),
-        )
-        .where(
-          and(
-            eq(enrollments.status, "completed"),
-            isNull(enrollments.deletedAt),
-          ),
-        ),
-
-      // Today's classes from student's active batches
-      db
-        .select({
-          todayClasses: sql<number>`
-            COUNT(DISTINCT ${batchSchedules.id})
-          `,
-        })
-        .from(enrollments)
-        .innerJoin(
-          student,
-          eq(enrollments.studentId, student.studentId),
-        )
-        .innerJoin(
-          batchSchedules,
-          and(
-            eq(batchSchedules.batchId, enrollments.batchId),
-            eq(batchSchedules.weekday, today),
-          ),
-        )
-        .where(
-          and(
-            eq(enrollments.status, "active"),
-            isNull(enrollments.deletedAt),
-          ),
-        ),
-    ]);
-
+    // Return the calculated dashboard statistics.
     return {
       success: true,
       message: "Student dashboard statistics fetched successfully.",
       data: {
-        activeBatches: Number(activeRows[0]?.activeBatches ?? 0),
-        completedBatches: Number(completedRows[0]?.completedBatches ?? 0),
-        todayClasses: Number(classRows[0]?.todayClasses ?? 0),
+        activeBatches: Number(stats?.activeBatches ?? 0),
+        completedBatches: Number(stats?.completedBatches ?? 0),
+        todayClasses: Number(stats?.todayClasses ?? 0),
       },
     };
   } catch (error) {
-    console.error("getStudentStats:", error);
+    console.error("getStudentStats failed:", error);
 
     return {
       success: false,
-      message: "Failed to fetch student dashboard statistics.",
+      message:
+        "Failed to fetch student dashboard statistics.",
       data: {
         activeBatches: 0,
         completedBatches: 0,
@@ -601,4 +592,5 @@ export async function getStudentStats() {
     };
   }
 }
+
 

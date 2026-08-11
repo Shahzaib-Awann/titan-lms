@@ -11,6 +11,7 @@ import {
   like,
   asc,
   desc,
+  exists,
 } from "drizzle-orm";
 import {
   users,
@@ -420,17 +421,28 @@ export async function deleteCourseBatch(id: string) {
   }
 }
 
+/**
+* Fetches assigned batch details for trainer/student batches page
+*
+* @param options - Optional search and batch name sorting options.
+* @returns Assigned batches with course info, schedules, syllabus counts,
+* progress, and student counts for trainers.
+*/
 export async function getAssignedBatches(options?: {
   search?: string;
   sort?: "asc" | "desc";
 }) {
+  // Get search and sort options, with ascending sort as the default.
   const { search, sort = "asc" } = options ?? {};
 
   try {
+    // Authorize user
     const user = await requireRole(["trainer", "student"]);
 
+    // Trim search term
     const searchTerm = search?.trim();
 
+    // Build search condition for courses and batches
     const searchCondition = searchTerm
       ? or(
           like(courseBatches.batchName, `%${searchTerm}%`),
@@ -439,67 +451,26 @@ export async function getAssignedBatches(options?: {
         )
       : undefined;
 
+    // Run all database operations inside one transaction.
     const result = await db.transaction(async (tx) => {
-      let batches;
-
-      // ==========================================
-      // TRAINER
-      // ==========================================
-      if (user.role === "trainer") {
-        batches = await tx
-          .select({
-            batchId: courseBatches.id,
-            batchName: courseBatches.batchName,
-
-            courseId: courses.id,
-            courseName: courses.title,
-
-            duration: courses.durationWeeks,
-
-            startDate: courseBatches.startDate,
-            endDate: courseBatches.endDate,
-          })
-          .from(courseBatches)
-          .innerJoin(
-            trainerProfiles,
+      // Check if the logged-in trainer owns the batch.
+      const trainerAccessCondition = exists(
+        tx
+          .select({ id: trainerProfiles.id })
+          .from(trainerProfiles)
+          .where(
             and(
-              eq(courseBatches.trainerId, trainerProfiles.id),
+              eq(trainerProfiles.id, courseBatches.trainerId),
               eq(trainerProfiles.userId, user.id),
               isNull(trainerProfiles.deletedAt),
             ),
-          )
-          .innerJoin(
-            courses,
-            and(
-              eq(courseBatches.courseId, courses.id),
-              isNull(courses.deletedAt),
-            ),
-          )
-          .where(and(isNull(courseBatches.deletedAt), searchCondition))
-          .orderBy(
-            sort === "asc"
-              ? asc(courseBatches.batchName)
-              : desc(courseBatches.batchName),
-          );
-      }
+          ),
+      );
 
-      // ==========================================
-      // STUDENT
-      // ==========================================
-      else {
-        batches = await tx
-          .select({
-            batchId: courseBatches.id,
-            batchName: courseBatches.batchName,
-
-            courseId: courses.id,
-            courseName: courses.title,
-
-            duration: courses.durationWeeks,
-
-            startDate: courseBatches.startDate,
-            endDate: courseBatches.endDate,
-          })
+      // Check if the logged-in student is enrolled in the batch.
+      const studentAccessCondition = exists(
+        tx
+          .select({ id: enrollments.id })
           .from(enrollments)
           .innerJoin(
             studentProfiles,
@@ -509,75 +480,103 @@ export async function getAssignedBatches(options?: {
               isNull(studentProfiles.deletedAt),
             ),
           )
-          .innerJoin(courseBatches, eq(enrollments.batchId, courseBatches.id))
-          .innerJoin(
-            courses,
-            and(
-              eq(courseBatches.courseId, courses.id),
-              isNull(courses.deletedAt),
-            ),
-          )
           .where(
             and(
+              eq(enrollments.batchId, courseBatches.id),
               isNull(enrollments.deletedAt),
-              isNull(courseBatches.deletedAt),
-              searchCondition,
             ),
-          )
-          .orderBy(
-            sort === "asc"
-              ? asc(courseBatches.batchName)
-              : desc(courseBatches.batchName),
-          );
-      }
-
-      // Remove possible duplicate batches
-      const uniqueBatches = Array.from(
-        new Map(batches.map((batch) => [batch.batchId, batch])).values(),
+          ),
       );
 
-      if (!uniqueBatches.length) {
+      // Use the correct access rule depending on the user's role.
+      const accessCondition =
+        user.role === "trainer"
+          ? trainerAccessCondition
+          : studentAccessCondition;
+
+      // Fetch all batches accessible to the current user.
+      const batches = await tx
+        .select({
+          batchId: courseBatches.id,
+          batchName: courseBatches.batchName,
+
+          courseId: courses.id,
+          courseName: courses.title,
+
+          duration: courses.durationWeeks,
+
+          startDate: courseBatches.startDate,
+          endDate: courseBatches.endDate,
+        })
+        .from(courseBatches)
+        .innerJoin(
+          courses,
+          and(
+            eq(courseBatches.courseId, courses.id),
+            isNull(courses.deletedAt),
+          ),
+        )
+        .where(
+          and(
+            isNull(courseBatches.deletedAt),
+            accessCondition,
+            searchCondition,
+          ),
+        )
+        .orderBy(
+          sort === "asc"
+            ? asc(courseBatches.batchName)
+            : desc(courseBatches.batchName),
+        );
+
+      // Return empty result sets when no batches were found.
+      if (batches.length === 0) {
         return {
           batches: [],
           schedules: [],
           syllabusCounts: [],
-          studentCounts: [],
           completedLessons: [],
+          studentCounts: [],
         };
       }
 
-      const batchIds = uniqueBatches.map((batch) => batch.batchId);
-      const courseIds = [
-        ...new Set(uniqueBatches.map((batch) => batch.courseId)),
-      ];
+      // Collect all batch IDs for the related queries.
+      const batchIds = batches.map((batch) => batch.batchId);
 
-      // ==========================================
-      // RELATED DATA
-      // ==========================================
+      // Collect unique course IDs for the syllabus query.
+      const courseIds = [...new Set(batches.map((batch) => batch.courseId))];
 
+      // Prepare a query to fetch all batch schedules.
       const schedulesPromise = tx
         .select()
         .from(batchSchedules)
         .where(inArray(batchSchedules.batchId, batchIds));
 
+      // Prepare a query to count modules and lessons per course.
       const syllabusPromise = tx
         .select({
           courseId: courses.id,
-
-          moduleCount: sql<number>`
-            COUNT(DISTINCT ${courseModules.id})
-          `,
-
-          lessonCount: sql<number>`
-            COUNT(DISTINCT ${moduleLessons.id})
-          `,
+          moduleCount: sql<number>`COUNT(DISTINCT ${courseModules.id})`,
+          lessonCount: sql<number>`COUNT(DISTINCT ${moduleLessons.id})`,
         })
         .from(courses)
-        .leftJoin(courseModules, eq(courseModules.courseId, courses.id))
-        .leftJoin(moduleLessons, eq(moduleLessons.moduleId, courseModules.id))
-        .where(inArray(courses.id, courseIds))
+        .leftJoin(
+          courseModules,
+          eq(courseModules.courseId, courses.id),
+        )
+        .leftJoin(
+          moduleLessons,
+          eq(moduleLessons.moduleId, courseModules.id),
+        )
+        .where(
+          and(
+            inArray(courses.id, courseIds),
+            isNull(courses.deletedAt),
+          ),
+        )
         .groupBy(courses.id);
 
+      // Prepare a query to count completed lessons per batch.
       const completedLessonsPromise = tx
         .select({
           batchId: moduleProgress.batchId,
@@ -595,8 +594,13 @@ export async function getAssignedBatches(options?: {
         )
         .groupBy(moduleProgress.batchId);
 
-      // Student count is only required for trainer
-      const studentCountsPromise =
+      // Count active students only for trainers.
+      const studentCountsPromise: Promise<
+        Array<{
+          batchId: string;
+          studentCount: number;
+        }>
+      > =
         user.role === "trainer"
           ? tx
               .select({
@@ -617,32 +621,31 @@ export async function getAssignedBatches(options?: {
               .groupBy(enrollments.batchId)
           : Promise.resolve([]);
 
-      const [schedules, syllabusCounts, studentCounts, completedLessons] =
-        await Promise.all([
-          schedulesPromise,
-          syllabusPromise,
-          studentCountsPromise,
-          completedLessonsPromise,
-        ]);
-
-      return {
-        batches: uniqueBatches,
+      // Run all independent queries at the same time.
+      const [
         schedules,
         syllabusCounts,
-        studentCounts,
         completedLessons,
+        studentCounts,
+      ] = await Promise.all([
+        schedulesPromise,
+        syllabusPromise,
+        completedLessonsPromise,
+        studentCountsPromise,
+      ]);
+
+      // Return all collected database results.
+      return {
+        batches,
+        schedules,
+        syllabusCounts,
+        completedLessons,
+        studentCounts,
       };
     });
 
-    const {
-      batches,
-      schedules,
-      syllabusCounts,
-      studentCounts,
-      completedLessons,
-    } = result;
-
-    if (!batches.length) {
+    // Return an empty successful response when no batches exist.
+    if (result.batches.length === 0) {
       return {
         success: true,
         message: "No batches found.",
@@ -650,65 +653,61 @@ export async function getAssignedBatches(options?: {
       };
     }
 
-    // ==========================================
-    // SCHEDULE MAP
-    // ==========================================
+    // Create a map to quickly find schedules by batch ID.
+    const scheduleMap = new Map<string, typeof result.schedules>();
 
-    const scheduleMap = new Map<string, typeof schedules>();
+    // Group every schedule under its batch.
+    for (const schedule of result.schedules) {
+      const schedules = scheduleMap.get(schedule.batchId);
 
-    for (const schedule of schedules) {
-      const existing = scheduleMap.get(schedule.batchId);
-
-      if (existing) {
-        existing.push(schedule);
+      // Add to the existing schedule list.
+      if (schedules) {
+        schedules.push(schedule);
       } else {
+        // Create a new schedule list for this batch.
         scheduleMap.set(schedule.batchId, [schedule]);
       }
     }
 
-    // ==========================================
-    // SYLLABUS MAP
-    // ==========================================
-
+    // Create a map for quick course syllabus lookup.
     const syllabusMap = new Map(
-      syllabusCounts.map((item) => [
+      result.syllabusCounts.map((item) => [
         item.courseId,
         {
-          moduleCount: Number(item.moduleCount),
-          lessonCount: Number(item.lessonCount),
+          moduleCount: item.moduleCount,
+          lessonCount: item.lessonCount,
         },
       ]),
     );
 
-    // ==========================================
-    // STUDENT COUNT MAP
-    // ==========================================
-
-    const studentMap = new Map(
-      studentCounts.map((item) => [item.batchId, Number(item.studentCount)]),
-    );
-
-    // ==========================================
-    // PROGRESS MAP
-    // ==========================================
-
+    // Create a map for quick completed-lesson lookup.
     const progressMap = new Map(
-      completedLessons.map((item) => [item.batchId, Number(item.completed)]),
+      result.completedLessons.map((item) => [
+        item.batchId,
+        item.completed,
+      ]),
     );
 
-    // ==========================================
-    // BUILD RESPONSE
-    // ==========================================
+    // Create a map for quick student-count lookup.
+    const studentMap = new Map(
+      result.studentCounts.map((item) => [
+        item.batchId,
+        item.studentCount,
+      ]),
+    );
 
-    const data = batches.map((batch) => {
-      const syllabus = syllabusMap.get(batch.courseId) ?? {
-        moduleCount: 0,
-        lessonCount: 0,
-      };
+    // Build the final response object for every batch.
+    const data = result.batches.map((batch) => {
+      const syllabus = syllabusMap.get(batch.courseId) ?? { moduleCount: 0, lessonCount: 0 };
 
-      const completed = progressMap.get(batch.batchId) ?? 0;
+      const completedLessons = Math.max(0, progressMap.get(batch.batchId) ?? 0);
+      const lessonCount = Math.max(0, syllabus.lessonCount);
 
-      const baseBatch = {
+      const progressPercentage =
+        lessonCount > 0 ? Math.min(100, Math.max(0, Math.round((completedLessons / lessonCount) * 100))) : 0;
+
+      // Return the final batch information.
+      return {
         batchId: batch.batchId,
         batchName: batch.batchName,
 
@@ -721,12 +720,9 @@ export async function getAssignedBatches(options?: {
         endDate: batch.endDate,
 
         moduleCount: syllabus.moduleCount,
-        lessonCount: syllabus.lessonCount,
+        lessonCount,
 
-        progressPercentage:
-          syllabus.lessonCount === 0
-            ? 0
-            : Math.round((completed / syllabus.lessonCount) * 100),
+        progressPercentage,
 
         schedule: scheduleMap.get(batch.batchId) ?? [],
 
@@ -735,9 +731,6 @@ export async function getAssignedBatches(options?: {
             ? (studentMap.get(batch.batchId) ?? 0)
             : undefined,
       };
-
-      // Student does NOT get student count
-      return baseBatch;
     });
 
     return {
@@ -746,7 +739,7 @@ export async function getAssignedBatches(options?: {
       data,
     };
   } catch (error) {
-    console.error("getDashboardBatches:", error);
+    console.error("getAssignedBatches failed:", error);
 
     return {
       success: false,
@@ -756,18 +749,59 @@ export async function getAssignedBatches(options?: {
   }
 }
 
-/**
- * Fetches batch summary details for the trainer layout.
- *
- * @param batchId - ID of the batch to fetch.
- * @returns Batch details including course info, dates, and schedule.
- */
-export async function getTrainerBatchSummeryForLayout(batchId: string) {
-  try {
-    // Get authenticated trainer user
-    const user = await requireRole("trainer");
 
-    // Fetch trainer's batch with schedule
+/**
+* Fetches batch summary details for the trainer/student batch layout.
+*
+* @param batchId - ID of the batch to fetch.
+* @param role - Role requesting the batch summary.
+* @returns Batch details including course info, dates, and schedule.
+*/
+export async function getBatchSummaryForBatchesLayout(
+  batchId: string,
+) {
+  try {
+    // Authorize user.
+    const user = await requireRole(["trainer", "student"]);
+
+    // Build access condition based on user role.
+    const accessCondition =
+      user.role === "trainer"
+        ? exists(
+            // Check if the trainer is assigned to this batch.
+            db
+              .select({ id: trainerProfiles.id })
+              .from(trainerProfiles)
+              .where(
+                and(
+                  eq(trainerProfiles.id, courseBatches.trainerId),
+                  eq(trainerProfiles.userId, user.id),
+                  isNull(trainerProfiles.deletedAt),
+                ),
+              ),
+          )
+        : exists(
+            // Check if the student is enrolled in this batch.
+            db
+              .select({ id: enrollments.id })
+              .from(enrollments)
+              .innerJoin(
+                studentProfiles,
+                and(
+                  eq(enrollments.studentId, studentProfiles.id),
+                  eq(studentProfiles.userId, user.id),
+                  isNull(studentProfiles.deletedAt),
+                ),
+              )
+              .where(
+                and(
+                  eq(enrollments.batchId, courseBatches.id),
+                  isNull(enrollments.deletedAt),
+                ),
+              ),
+          );
+
+    // Fetch the batch, course, and schedule information.
     const rows = await db
       .select({
         batchId: courseBatches.id,
@@ -779,30 +813,30 @@ export async function getTrainerBatchSummeryForLayout(batchId: string) {
         startDate: courseBatches.startDate,
         endDate: courseBatches.endDate,
 
-        scheduleId: batchSchedules.id,
         weekday: batchSchedules.weekday,
       })
       .from(courseBatches)
       .innerJoin(
-        trainerProfiles,
+        courses,
         and(
-          eq(courseBatches.trainerId, trainerProfiles.id),
-          eq(trainerProfiles.userId, user.id),
-          isNull(trainerProfiles.deletedAt),
+          eq(courseBatches.courseId, courses.id),
+          isNull(courses.deletedAt),
         ),
       )
-      .innerJoin(courses, eq(courseBatches.courseId, courses.id))
-      .leftJoin(batchSchedules, eq(batchSchedules.batchId, courseBatches.id))
+      .leftJoin(
+        batchSchedules,
+        eq(batchSchedules.batchId, courseBatches.id),
+      )
       .where(
         and(
           eq(courseBatches.id, batchId),
           isNull(courseBatches.deletedAt),
-          isNull(courses.deletedAt),
+          accessCondition,
         ),
       );
 
-    // Batch not found or doesn't belong to trainer
-    if (!rows.length) {
+    // Return "not found" if no matching batch exists.
+    if (rows.length === 0) {
       return {
         success: false,
         status: "not_found" as const,
@@ -812,21 +846,20 @@ export async function getTrainerBatchSummeryForLayout(batchId: string) {
 
     const first = rows[0];
 
-    // Unique weekdays
+    // Extract unique weekdays from the results.
     const schedule = [
       ...new Set(
-        rows
-          .map((row) => row.weekday)
-          .filter(
-            (day): day is NonNullable<typeof day> =>
-              day !== null && day !== undefined,
+        rows.map((row) => row.weekday).filter((day): day is NonNullable<typeof day> =>
+            day !== null && day !== undefined,
           ),
       ),
     ];
 
+    // Return the batch summary..
     return {
       success: true,
       status: "success" as const,
+
       data: {
         batchId: first.batchId,
         batchName: first.batchName,
@@ -841,7 +874,7 @@ export async function getTrainerBatchSummeryForLayout(batchId: string) {
       },
     };
   } catch (error) {
-    console.error("getTrainerBatchSummeryForLayout:", error);
+    console.error("getBatchSummaryForBatchesLayout failed:", error);
 
     return {
       success: false,
@@ -850,6 +883,7 @@ export async function getTrainerBatchSummeryForLayout(batchId: string) {
     };
   }
 }
+
 
 /**
  * Fetches lesson progress summary for a trainer's batch.

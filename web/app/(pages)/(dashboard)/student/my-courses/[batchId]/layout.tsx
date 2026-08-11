@@ -26,7 +26,6 @@ export default async function BatchesLayout({
   }
 
   const status = getEntityStatus(batch.startDate, batch.endDate);
-
   return (
     <>
       <header className="my-2 flex items-end justify-between">
@@ -70,7 +69,7 @@ export default async function BatchesLayout({
         </section>
       </header>
 
-      <BatchLayoutTabNavigation batchId={batchId} role="trainer" />
+      <BatchLayoutTabNavigation batchId={batchId} role="student" />
 
       <main className="flex flex-1 flex-col gap-4 p-4 pt-0">{children}</main>
     </>

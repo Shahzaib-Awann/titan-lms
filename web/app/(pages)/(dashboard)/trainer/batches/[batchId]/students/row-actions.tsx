@@ -47,13 +47,9 @@ export function RowActions({ batchId, student, enrollment }: Props) {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger>
-          <button
-            type="button"
-            className="flex size-8 items-center justify-center rounded-md hover:bg-muted"
-            aria-label="Open menu"
-          >
-            <MoreHorizontal className="size-4" />
-          </button>
+          <span className="sr-only">Open menu</span>
+
+          <MoreHorizontal className="size-4" />
         </DropdownMenuTrigger>
 
         <DropdownMenuContent align="end">

@@ -3,37 +3,64 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import React from "react";
+import { Role } from "@/types/common";
 
-const TrainerTabNavigation = ({ batchId }: { batchId: string }) => {
+type BatchLayoutTabNavigationProps = {
+  batchId: string;
+  role: Exclude<Role, "admin">;
+};
+
+const BatchLayoutTabNavigation = ({
+  batchId,
+  role,
+}: BatchLayoutTabNavigationProps) => {
   const pathname = usePathname();
+
+  const basePath =
+    role === "trainer"
+      ? `/trainer/batches/${batchId}`
+      : `/student/my-courses/${batchId}`;
 
   const tabs = [
     {
       label: "Overview",
-      href: `/trainer/batches/${batchId}`,
+      href: basePath,
+      visibleTo: "both",
     },
     {
       label: "Progress",
-      href: `/trainer/batches/${batchId}/progress`,
+      href: `${basePath}/progress`,
+      visibleTo: "both",
     },
     {
       label: "Students",
-      href: `/trainer/batches/${batchId}/students`,
+      href: `${basePath}/students`,
+      visibleTo: "trainer",
     },
     {
       label: "Assignments",
-      href: `/trainer/batches/${batchId}/assignments`,
+      href: `${basePath}/assignments`,
+      visibleTo: "both",
     },
-
     {
       label: "Quizzes",
-      href: `/trainer/batches/${batchId}/quizzes`,
+      href: `${basePath}/quizzes`,
+      visibleTo: "both",
+    },
+    {
+      label: "Attendance",
+      href: `${basePath}/attendance`,
+      visibleTo: "trainer",
     },
   ];
 
+  const visibleTabs = tabs.filter(
+    (tab) => tab.visibleTo === "both" || tab.visibleTo === role,
+  );
+
   return (
     <nav className="flex gap-2 border-b">
-      {tabs.map((tab) => {
+      {visibleTabs.map((tab) => {
         const isActive = pathname === tab.href;
 
         return (
@@ -43,7 +70,7 @@ const TrainerTabNavigation = ({ batchId }: { batchId: string }) => {
             className={`border-b-2 px-3 py-3 text-sm transition-colors ${
               isActive
                 ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted"
+                : "border-transparent text-muted-foreground hover:border-muted hover:text-foreground"
             }`}
           >
             {tab.label}
@@ -54,4 +81,4 @@ const TrainerTabNavigation = ({ batchId }: { batchId: string }) => {
   );
 };
 
-export default TrainerTabNavigation;
+export default BatchLayoutTabNavigation;
