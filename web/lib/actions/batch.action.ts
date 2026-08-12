@@ -27,11 +27,11 @@ import {
   studentProfiles,
 } from "@/lib/db/schema";
 import { BatchFormSchema } from "@/lib/zod/admin.schema";
-import { requireRole, requireTrainer } from "./auth.action";
+import { requireRole } from "./auth.action";
 import z from "zod";
 import { nanoid } from "nanoid";
 import { revalidatePath } from "next/cache";
-import { BatchStatus, LessonStatus } from "@/types/common";
+import { BatchStatus, LessonStatus, ModuleStatus, Role } from "@/types/common";
 
 /**
  * Fetches active trainers for selection options.
@@ -751,12 +751,11 @@ export async function getAssignedBatches(options?: {
 
 
 /**
-* Fetches batch summary details for the trainer/student batch layout.
-*
-* @param batchId - ID of the batch to fetch.
-* @param role - Role requesting the batch summary.
-* @returns Batch details including course info, dates, and schedule.
-*/
+ * Fetches batch summary details for the trainer/student batch layout.
+ *
+ * @param batchId - ID of the batch to fetch.
+ * @returns Batch details including course info, dates, and schedule.
+ */
 export async function getBatchSummaryForBatchesLayout(
   batchId: string,
 ) {
@@ -886,52 +885,13 @@ export async function getBatchSummaryForBatchesLayout(
 
 
 /**
- * Fetches lesson progress summary for a trainer's batch.
+ * Fetches lesson progress summary for trainer's and student's /progress page.
  *
  * @param batchId - ID of the batch to fetch summary for.
  * @returns Lesson counts and progress details for the batch.
  */
-export async function getTrainerBatchLessonSummary(batchId: string) {
+export async function getBatchLessonProgressSummary(batchId: string) {
   try {
-    // --------------------------------------------------
-    // 1. Logged in user
-    // --------------------------------------------------
-
-    const { trainer } = await requireTrainer();
-
-    // --------------------------------------------------
-    // 3. Verify Batch Ownership + Course
-    // --------------------------------------------------
-
-    const [batch] = await db
-      .select({
-        batchId: courseBatches.id,
-        courseId: courses.id,
-      })
-      .from(courseBatches)
-      .innerJoin(courses, eq(courseBatches.courseId, courses.id))
-      .where(
-        and(
-          eq(courseBatches.id, batchId),
-          eq(courseBatches.trainerId, trainer.id),
-          isNull(courseBatches.deletedAt),
-          isNull(courses.deletedAt),
-        ),
-      )
-      .limit(1);
-
-    if (!batch) {
-      return {
-        success: false,
-        status: "not_found" as const,
-        message: "Batch not found",
-      };
-    }
-
-    // --------------------------------------------------
-    // 4. Fetch lesson + progress summary
-    // --------------------------------------------------
-
     const [summary] = await db
       .select({
         totalLessonsCount: sql<number>`
@@ -939,69 +899,106 @@ export async function getTrainerBatchLessonSummary(batchId: string) {
         `,
 
         completedLessonCount: sql<number>`
-          SUM(
-            CASE
-              WHEN ${moduleProgress.status} = 'completed'
-              THEN 1
-              ELSE 0
-            END
+          COALESCE(
+            SUM(
+              CASE
+                WHEN ${moduleProgress.status} = 'completed'
+                THEN 1
+                ELSE 0
+              END
+            ),
+            0
           )
         `,
 
         activeLessonCount: sql<number>`
-          SUM(
-            CASE
-              WHEN ${moduleProgress.status} = 'in_progress'
-              THEN 1
-              ELSE 0
-            END
+          COALESCE(
+            SUM(
+              CASE
+                WHEN ${moduleProgress.status} = 'in_progress'
+                THEN 1
+                ELSE 0
+              END
+            ),
+            0
           )
         `,
 
         skippedLessonCount: sql<number>`
-          SUM(
-            CASE
-              WHEN ${moduleProgress.status} = 'skipped'
-              THEN 1
-              ELSE 0
-            END
+          COALESCE(
+            SUM(
+              CASE
+                WHEN ${moduleProgress.status} = 'skipped'
+                THEN 1
+                ELSE 0
+              END
+            ),
+            0
           )
         `,
 
         notStartedLessonCount: sql<number>`
-          SUM(
-            CASE
-              WHEN ${moduleProgress.id} IS NULL
-              OR ${moduleProgress.status} = 'not_started'
-              THEN 1
-              ELSE 0
-            END
+          COALESCE(
+            SUM(
+              CASE
+                WHEN ${moduleProgress.id} IS NULL
+                  OR ${moduleProgress.status} = 'not_started'
+                THEN 1
+                ELSE 0
+              END
+            ),
+            0
           )
         `,
       })
-      .from(courseModules)
-      .innerJoin(moduleLessons, eq(moduleLessons.moduleId, courseModules.id))
+      .from(courseBatches)
+      .innerJoin(
+        courses,
+        and(
+          eq(courses.id, courseBatches.courseId),
+          isNull(courses.deletedAt),
+        ),
+      )
+      .leftJoin(
+        courseModules,
+        eq(courseModules.courseId, courses.id),
+      )
+      .leftJoin(
+        moduleLessons,
+        eq(moduleLessons.moduleId, courseModules.id),
+      )
       .leftJoin(
         moduleProgress,
         and(
+          eq(moduleProgress.batchId, courseBatches.id),
           eq(moduleProgress.lessonId, moduleLessons.id),
-          eq(moduleProgress.batchId, batchId),
         ),
       )
-      .where(eq(courseModules.courseId, batch.courseId));
+      .where(
+        and(
+          eq(courseBatches.id, batchId),
+          isNull(courseBatches.deletedAt),
+        ),
+      )
+      .groupBy(courseBatches.id)
+      .limit(1);
 
-    const totalLessons = Number(summary?.totalLessonsCount ?? 0);
+    // Batch doesn't exist.
+    if (!summary) {
+      return {
+        success: false,
+        status: "not_found" as const,
+        message: "Batch not found",
+      };
+    }
 
-    const completedLessons = Number(summary?.completedLessonCount ?? 0);
+    const totalLessons = Number(summary.totalLessonsCount);
+    const completedLessons = Number(summary.completedLessonCount);
 
     const progressPercentage =
-      totalLessons === 0
-        ? 0
-        : Math.round((completedLessons / totalLessons) * 100);
-
-    // --------------------------------------------------
-    // 5. Response
-    // --------------------------------------------------
+      totalLessons > 0
+        ? Math.round((completedLessons / totalLessons) * 100)
+        : 0;
 
     return {
       success: true,
@@ -1009,106 +1006,87 @@ export async function getTrainerBatchLessonSummary(batchId: string) {
 
       data: {
         totalLessonsCount: totalLessons,
-
         completedLessonCount: completedLessons,
-
-        activeLessonCount: Number(summary?.activeLessonCount ?? 0),
-
-        skippedLessonCount: Number(summary?.skippedLessonCount ?? 0),
-
-        notStartedLessonCount: Number(summary?.notStartedLessonCount ?? 0),
-
+        activeLessonCount: Number(summary.activeLessonCount),
+        skippedLessonCount: Number(summary.skippedLessonCount),
+        notStartedLessonCount: Number(summary.notStartedLessonCount),
         progressPercentage,
       },
     };
   } catch (error) {
-    console.error("getTrainerBatchLessonSummary error:", error);
+    console.error("getBatchLessonProgressSummary error:", error);
 
     return {
       success: false,
       status: "error" as const,
-      message: "Failed to get batch lesson summary",
+      message: "Failed to get batch lesson progress summary",
       error: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }
 
 /**
- * Fetches curriculum roadmap and lesson progress for a trainer's batch.
+ * Fetches curriculum roadmap and lesson progress for a trainer or student in a batch.
  *
  * @param batchId - ID of the batch to fetch roadmap for.
+ * @param role - Role requesting the batch roadmap.
  * @returns Modules with lessons, progress status, and completion details.
  */
-export async function getTrainerBatchCurriculumRoadmap(batchId: string) {
+export async function getBatchCurriculumProgressRoadmap(
+  batchId: string,
+  role: Role,
+) {
   try {
-    // Get authenticated trainer
-    const user = await requireRole("trainer");
+    const canUpdateLessonStatus = role === "trainer";
 
-    const rows = await db.transaction(async (tx) => {
-      // Verify ownership and get course
-      const [batch] = await tx
-        .select({
-          courseId: courseBatches.courseId,
-        })
-        .from(courseBatches)
-        .innerJoin(
-          trainerProfiles,
-          and(
-            eq(courseBatches.trainerId, trainerProfiles.id),
-            eq(trainerProfiles.userId, user.id),
-            isNull(trainerProfiles.deletedAt),
-          ),
-        )
-        .where(
-          and(eq(courseBatches.id, batchId), isNull(courseBatches.deletedAt)),
-        )
-        .limit(1);
+    const rows = await db
+      .select({
+        batchId: courseBatches.id,
 
-      if (!batch) {
-        return null;
-      }
+        moduleId: courseModules.id,
+        moduleTitle: courseModules.title,
+        moduleDescription: courseModules.description,
+        moduleOrderIndex: courseModules.orderIndex,
 
-      // Fetch curriculum with lesson progress
-      return tx
-        .select({
-          moduleId: courseModules.id,
-          moduleTitle: courseModules.title,
-          moduleDescription: courseModules.description,
-          moduleOrderIndex: courseModules.orderIndex,
+        lessonId: moduleLessons.id,
+        lessonTitle: moduleLessons.title,
+        lessonDescription: moduleLessons.description,
+        lessonOrderIndex: moduleLessons.orderIndex,
 
-          lessonId: moduleLessons.id,
-          lessonTitle: moduleLessons.title,
-          lessonDescription: moduleLessons.description,
-          lessonOrderIndex: moduleLessons.orderIndex,
+        progressStatus: moduleProgress.status,
+      })
+      .from(courseBatches)
+      .leftJoin(
+        courseModules,
+        eq(courseModules.courseId, courseBatches.courseId),
+      )
+      .leftJoin(
+        moduleLessons,
+        eq(moduleLessons.moduleId, courseModules.id),
+      )
+      .leftJoin(
+        moduleProgress,
+        and(
+          eq(moduleProgress.lessonId, moduleLessons.id),
+          eq(moduleProgress.batchId, courseBatches.id),
+        ),
+      )
+      .where(
+        and(
+          eq(courseBatches.id, batchId),
+          isNull(courseBatches.deletedAt),
+        ),
+      )
+      .orderBy(
+        asc(courseModules.orderIndex),
+        asc(moduleLessons.orderIndex),
+      );
 
-          progressStatus: moduleProgress.status,
-        })
-        .from(courseModules)
-        .innerJoin(moduleLessons, eq(moduleLessons.moduleId, courseModules.id))
-        .leftJoin(
-          moduleProgress,
-          and(
-            eq(moduleProgress.lessonId, moduleLessons.id),
-            eq(moduleProgress.batchId, batchId),
-          ),
-        )
-        .where(eq(courseModules.courseId, batch.courseId))
-        .orderBy(asc(courseModules.orderIndex), asc(moduleLessons.orderIndex));
-    });
-
-    // Batch not found or doesn't belong to trainer
-    if (!rows) {
+    // Batch doesn't exist.
+    if (!rows.length) {
       return {
         success: false,
         message: "Batch not found",
-        data: [],
-      };
-    }
-
-    if (!rows.length) {
-      return {
-        success: true,
-        message: "No curriculum found",
         data: [],
       };
     }
@@ -1119,89 +1097,121 @@ export async function getTrainerBatchCurriculumRoadmap(batchId: string) {
       description: string | null;
       orderIndex: number;
       progressStatus: LessonStatus;
+      canUpdateLessonStatus: boolean;
     };
 
-    const moduleMap = new Map<
-      string,
-      {
-        id: string;
-        title: string;
-        description: string | null;
-        orderIndex: number;
-        lessons: Lesson[];
-      }
-    >();
+    type ModuleData = {
+      id: string;
+      title: string;
+      description: string | null;
+      orderIndex: number;
 
-    // Group lessons by module
+      totalLessonsCount: number;
+      completedLessonsCount: number;
+      activeLessonsCount: number;
+
+      lessons: Lesson[];
+    };
+
+    const moduleMap = new Map<string, ModuleData>();
+
     for (const row of rows) {
-      let courseModule = moduleMap.get(row.moduleId);
+      // Batch exists but has no curriculum.
+      if (!row.moduleId || !row.lessonId) {
+        continue;
+      }
 
-      if (!courseModule) {
-        courseModule = {
+      let moduleData = moduleMap.get(row.moduleId);
+
+      if (!moduleData) {
+        moduleData = {
           id: row.moduleId,
-          title: row.moduleTitle,
+          title: row.moduleTitle!,
           description: row.moduleDescription,
-          orderIndex: row.moduleOrderIndex,
+
+          // DB value is nullable according to Drizzle's inferred type.
+          orderIndex: row.moduleOrderIndex ?? 0,
+
+          totalLessonsCount: 0,
+          completedLessonsCount: 0,
+          activeLessonsCount: 0,
+
           lessons: [],
         };
 
-        moduleMap.set(row.moduleId, courseModule);
+        moduleMap.set(row.moduleId, moduleData);
       }
 
-      courseModule.lessons.push({
+      const progressStatus: LessonStatus =
+        row.progressStatus ?? "not_started";
+
+      moduleData.totalLessonsCount++;
+
+      switch (progressStatus) {
+        case "completed":
+          moduleData.completedLessonsCount++;
+          moduleData.activeLessonsCount++;
+          break;
+
+        case "in_progress":
+        case "skipped":
+          moduleData.activeLessonsCount++;
+          break;
+      }
+
+      moduleData.lessons.push({
         id: row.lessonId,
-        title: row.lessonTitle,
+        title: row.lessonTitle!,
         description: row.lessonDescription,
-        orderIndex: row.lessonOrderIndex,
-        progressStatus: row.progressStatus ?? "not_started",
+        orderIndex: row.lessonOrderIndex ?? 0,
+        progressStatus,
+        canUpdateLessonStatus,
       });
     }
 
-    // Build response
-    const data = Array.from(moduleMap.values()).map((courseModule) => {
-      let completedLessons = 0;
-      let activeLessons = 0;
+    if (moduleMap.size === 0) {
+      return {
+        success: true,
+        message: "No curriculum found",
+        data: [],
+      };
+    }
 
-      for (const lesson of courseModule.lessons) {
-        if (lesson.progressStatus === "completed") {
-          completedLessons++;
-          activeLessons++;
-        } else if (
-          lesson.progressStatus === "in_progress" ||
-          lesson.progressStatus === "skipped"
-        ) {
-          activeLessons++;
-        }
-      }
+    const data = Array.from(moduleMap.values()).map((moduleData) => {
+      const {
+        totalLessonsCount,
+        completedLessonsCount,
+        activeLessonsCount,
+      } = moduleData;
 
-      const totalLessons = courseModule.lessons.length;
+      const moduleProgressPercentage =
+        totalLessonsCount > 0
+          ? Math.round(
+              (completedLessonsCount / totalLessonsCount) * 100,
+            )
+          : 0;
 
-      const progressPercentage =
-        totalLessons === 0
-          ? 0
-          : Math.round((completedLessons / totalLessons) * 100);
+      let status: ModuleStatus;
 
-      let status: "completed" | "in_progress" | "not_started";
-
-      if (completedLessons === totalLessons) {
+      if (completedLessonsCount === totalLessonsCount) {
         status = "completed";
-      } else if (activeLessons > 0) {
+      } else if (activeLessonsCount > 0) {
         status = "in_progress";
       } else {
         status = "not_started";
       }
 
       return {
-        id: courseModule.id,
-        title: courseModule.title,
-        description: courseModule.description,
-        orderIndex: courseModule.orderIndex,
+        id: moduleData.id,
+        title: moduleData.title,
+        description: moduleData.description,
+        orderIndex: moduleData.orderIndex,
 
         status,
-        moduleProgressPercentage: progressPercentage,
-        totalLessonsCount: totalLessons,
+        moduleProgressPercentage,
 
-        lessons: courseModule.lessons,
+        totalLessonsCount,
+        lessons: moduleData.lessons,
       };
     });
 
@@ -1211,7 +1221,7 @@ export async function getTrainerBatchCurriculumRoadmap(batchId: string) {
       data,
     };
   } catch (error) {
-    console.error("getTrainerBatchCurriculumRoadmap:", error);
+    console.error("getBatchCurriculumProgressRoadmap:", error);
 
     return {
       success: false,
@@ -1238,12 +1248,12 @@ export async function updateTrainerLessonProgress(payload: {
     const { moduleId, lessonId, action, batchId } = payload;
 
     // Validate allowed lesson statuses
-    const allowedStatuses = [
+    const allowedStatuses: LessonStatus[] = [
       "not_started",
       "in_progress",
       "completed",
       "skipped",
-    ] as const;
+    ];
 
     if (!allowedStatuses.includes(action)) {
       throw new Error("Invalid lesson progress status");
@@ -1328,6 +1338,7 @@ export async function updateTrainerLessonProgress(payload: {
     }
 
     revalidatePath(`/trainer/batches/${batchId}/progress`);
+    revalidatePath(`/student/my-courses/${batchId}/progress`);
 
     return {
       success: true,

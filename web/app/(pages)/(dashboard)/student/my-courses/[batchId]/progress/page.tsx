@@ -2,8 +2,8 @@ import {
   getBatchCurriculumProgressRoadmap,
   getBatchLessonProgressSummary,
 } from "@/lib/actions/batch.action";
-import BatchModulesCard from "../../../../../../../components/pages/trainer/batches/batch-modules-preview";
-import BatchProgressOverview from "../../../../../../../components/pages/trainer/batches/batch-progress-overview";
+import BatchModulesCard from "@/components/pages/trainer/batches/batch-modules-preview";
+import BatchProgressOverview from "@/components/pages/trainer/batches/batch-progress-overview";
 
 const ProgressPage = async ({
   params,
@@ -14,7 +14,7 @@ const ProgressPage = async ({
 
   const [batchProgress, curriculumRoadmap] = await Promise.all([
     getBatchLessonProgressSummary(batchId),
-    getBatchCurriculumProgressRoadmap(batchId, "trainer"),
+    getBatchCurriculumProgressRoadmap(batchId, "student"),
   ]);
 
   return (

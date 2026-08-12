@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import toast from "react-hot-toast";
 import { LessonStatusDropdown } from "./lesson-status-dropdown";
 import { updateTrainerLessonProgress } from "@/lib/actions/batch.action";
+import { LessonStatus, ModuleStatus } from "@/types/common";
 
 interface BatchModulesCardProps {
   batchId: string;
@@ -23,7 +24,7 @@ interface BatchModulesCardProps {
     title: string;
     description: string | null;
     orderIndex: number;
-    status: "completed" | "in_progress" | "not_started";
+    status: ModuleStatus;
     moduleProgressPercentage: number;
     totalLessonsCount: number;
     lessons: {
@@ -31,7 +32,8 @@ interface BatchModulesCardProps {
       title: string;
       description: string | null;
       orderIndex: number;
-      progressStatus: "completed" | "in_progress" | "not_started" | "skipped";
+      progressStatus: LessonStatus;
+      canUpdateLessonStatus: boolean;
     }[];
   }[];
 }
@@ -56,7 +58,7 @@ export default function BatchModulesCard({
       moduleId,
       lessonId,
       batchId,
-      action: action as "completed" | "in_progress" | "not_started" | "skipped",
+      action: action as LessonStatus,
     });
 
     if (!response.success) {
@@ -160,12 +162,29 @@ export default function BatchModulesCard({
                           </p>
                         </div>
                       </div>
-                      <LessonStatusDropdown
-                        moduleId={module.id}
-                        lessonId={lesson.id}
-                        status={lesson.progressStatus}
-                        onChange={handleLessonStatus}
-                      />
+                      {lesson.canUpdateLessonStatus ? (
+                        <LessonStatusDropdown
+                          moduleId={module.id}
+                          lessonId={lesson.id}
+                          status={lesson.progressStatus}
+                          onChange={handleLessonStatus}
+                        />
+                      ) : (
+                        <Badge
+                          variant={
+                            lesson.progressStatus === "completed"
+                              ? "success"
+                              : lesson.progressStatus === "in_progress"
+                                ? "info"
+                                : lesson.progressStatus === "not_started"
+                                  ? "secondary"
+                                  : "warning"
+                          }
+                          className="capitalize"
+                        >
+                          {lesson.progressStatus}
+                        </Badge>
+                      )}
                     </div>
                   ))}
                 </CardContent>
