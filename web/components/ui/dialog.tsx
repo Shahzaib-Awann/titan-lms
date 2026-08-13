@@ -64,6 +64,7 @@ function DialogContent({
           [
             "fixed top-1/2 left-1/2 z-50",
             "w-full max-w-[calc(100%-2rem)]",
+            "h-auto max-h-[calc(100%-2rem)]",
             "-translate-x-1/2 -translate-y-1/2",
 
             // Titan surfaces

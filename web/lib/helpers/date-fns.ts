@@ -28,13 +28,17 @@ export const formatDay = (day: string | null) => {
 
 /**
  * Formats a date value into a short month, day, and year string.
- * Handles both Date objects and null/undefined values.
+ * Optionally includes the time.
  *
- * @param {Date | null} dateValue - The date to format, or null/undefined.
- * @returns {string} The formatted date string (e.g., "Jan 15, 2023") or an empty string if no date is provided.
+ * @param {Date | string | null | undefined} dateValue - The date to format.
+ * @param {FormatDateOptions} options - Formatting options.
+ * @returns {string} The formatted date string or an empty string if no date is provided.
  */
 export const formatDate = (
-  dateValue: Date | string | null | undefined
+  dateValue: Date | string | null | undefined,
+  { withTime = false }: {
+  withTime?: boolean;
+} = {}
 ): string => {
   if (!dateValue) return "";
 
@@ -43,7 +47,10 @@ export const formatDate = (
 
   if (isNaN(date.getTime())) return "";
 
-  return format(date, "MMM d, yyyy");
+  return format(
+    date,
+    withTime ? "MMM d, yyyy - hh:mm a" : "MMM d, yyyy"
+  );
 };
 
 export type EntityStatus = "upcoming" | "live" | "completed";

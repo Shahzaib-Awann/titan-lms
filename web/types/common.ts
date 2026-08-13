@@ -42,3 +42,8 @@ export type LessonStatus = "completed" | "in_progress" | "not_started" | "skippe
  * Represents the current status of an assignment.
  */
 export type AssignmentStatus = "draft" | "published" | "closed";
+
+/**
+ * Represents the current status of an assignment submission.
+ */
+export type AssignmentSubmissionStatus = "not_submitted" | "submitted" | "late" | "graded" | "resubmitted";

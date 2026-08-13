@@ -44,8 +44,10 @@ export function RowActions({ id, batchId }: Props) {
           <DropdownMenuGroup>
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
 
-            <Link href={`/trainer/batches/${batchId}/assignments/${id}`}>
-              <DropdownMenuItem>View</DropdownMenuItem>
+            <Link
+              href={`/trainer/batches/${batchId}/assignments/${id}/submissions`}
+            >
+              <DropdownMenuItem>Submissions</DropdownMenuItem>
             </Link>
 
             <Link href={`/trainer/batches/${batchId}/assignments/edit/${id}`}>

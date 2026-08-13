@@ -249,7 +249,7 @@ export const assignments = mysqlTable("assignments", {
   moduleId: varchar("module_id", { length: 21 }).references(() => courseModules.id),
   lessonId: varchar("lesson_id", { length: 21 }).references(() => moduleLessons.id),
 
-  createdBy: varchar("created_by", { length: 21 }).notNull().references(() => users.id),
+  createdBy: varchar("created_by", { length: 21 }).notNull().references(() => trainerProfiles.id),
 
   title: varchar("title", { length: 255 }).notNull(),
   instructions: text("instructions"),
@@ -277,10 +277,10 @@ export const assignmentSubmissions = mysqlTable("assignment_submissions", {
     submittedAt: timestamp("submitted_at"),
     submissionNote: text("submission_note"),
 
-    marksObtained: decimal("marks_obtained", { precision: 10, scale: 2}),
+    marksObtained: int("marks_obtained"),
     teacherFeedback: text("teacher_feedback"),
 
-    gradedBy: varchar("graded_by", { length: 21 }).references(() => users.id),
+    gradedBy: varchar("graded_by", { length: 21 }).references(() => trainerProfiles.id),
     gradedAt: timestamp("graded_at"),
 
     createdAt: timestamp("created_at").defaultNow().notNull(),

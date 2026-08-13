@@ -35,3 +35,26 @@ export const AssignmentWithReferencesFormSchema = AssignmentFormSchema.extend({
   referenceLinks: z.array(AssignmentReferenceLinkSchema),
 });
 
+export const AssignmentSubmissionFormSchema = z.object({
+  submissionNote: z
+    .string()
+    .max(1000, "Submission note must be less than 1000 characters")
+    .nullable(),
+
+  referenceLinks: z.array(AssignmentReferenceLinkSchema).min(1, "at least one reference link is required").max(5, "at most 5 reference links are allowed"),
+});
+
+export const AssignmentSubmissionGradingFormSchema = (maxMarks: number) =>
+  z.object({
+    marks: z
+      .number({
+        message: "Marks are required.",
+      })
+      .min(0, "Marks cannot be negative.")
+      .max(maxMarks, `Marks cannot exceed ${maxMarks}.`),
+
+    feedback: z
+      .string()
+      .max(1000, "Feedback must be 1000 characters or less."),
+  });
+
