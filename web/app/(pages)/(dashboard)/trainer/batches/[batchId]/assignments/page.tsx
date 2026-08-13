@@ -1,4 +1,4 @@
-import { AssignmentsTable } from "../../../../../../../components/pages/trainer/assignments/assignments-table";
+import { AssignmentsTable } from "@/components/pages/assignments/assignments-table";
 import { getTrainerBatchAssignmentsForDataTable } from "@/lib/actions/assignment.action";
 
 const AssignmentsPage = async ({

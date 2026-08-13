@@ -65,7 +65,7 @@ const GradingPanel = ({
 
       const result = await gradeAssignmentSubmission({
         submissionId,
-        obtainedMarks: String(values.marks),
+        obtainedMarks: values.marks,
         teacherFeedback: values.feedback,
       });
 

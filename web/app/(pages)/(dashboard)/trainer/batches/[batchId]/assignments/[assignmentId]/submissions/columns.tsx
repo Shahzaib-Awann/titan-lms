@@ -22,7 +22,7 @@ export interface TrainerAssignmentSubmission {
   student: {
     id: string;
     fullName: string;
-    AvatarUrl: string | null;
+    avatarUrl: string | null;
     rollNumber: string;
   };
 
@@ -75,12 +75,12 @@ export const columns: ColumnDef<TrainerAssignmentSubmission>[] = [
       <DataTableColumnHeader column={column} title="Student" />
     ),
     cell: ({ row }) => {
-      const { fullName, AvatarUrl } = row.original.student;
+      const { fullName, avatarUrl } = row.original.student;
 
       return (
         <div className="flex min-w-0 items-center gap-3">
           <Avatar>
-            <AvatarImage src={AvatarUrl ?? undefined} alt={fullName} />
+            <AvatarImage src={avatarUrl ?? undefined} alt={fullName} />
             <AvatarFallback initial={fullName} />
           </Avatar>
 

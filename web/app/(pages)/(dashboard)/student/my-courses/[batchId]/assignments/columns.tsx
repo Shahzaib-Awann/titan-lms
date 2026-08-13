@@ -29,7 +29,7 @@ export interface StudentPortalAssignment {
     status: AssignmentSubmissionStatus;
     submissionNote: string | null;
     submittedAt: Date | null;
-    marksObtained: string | null;
+    marksObtained: number | null;
     teacherFeedback: string | null;
     gradedAt: Date | null;
 

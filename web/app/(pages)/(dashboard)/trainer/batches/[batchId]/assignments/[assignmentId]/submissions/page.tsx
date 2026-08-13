@@ -36,56 +36,61 @@ const TrainerSubmissionsPage = async ({
     getAssignmentSubmissionsDatatable(batchId, assignmentId),
   ]);
 
-  const statsCards = [
-    {
-      title: "Total Students",
-      value: assignmentSummary.stats.totalStudentCount ?? 0,
-      icon: Users,
-      status: "Students in this batch",
-      color: "text-blue-500",
-    },
-    {
-      title: "Submitted",
-      value: assignmentSummary.stats.submittedCount ?? 0,
-      icon: ClipboardCheck,
-      status: "Assignments submitted",
-      color: "text-green-500",
-    },
-    {
-      title: "Pending",
-      value: assignmentSummary.stats.pendingCount ?? 0,
-      icon: CalendarClock,
-      status: "Awaiting submission",
-      color: "text-orange-500",
-    },
-    {
-      title: "Graded",
-      value: assignmentSummary.stats.gradedCount ?? 0,
-      icon: Award,
-      status: "Submissions graded",
-      color: "text-purple-500",
-    },
-  ];
+  const { success, data: summary } = assignmentSummary;
+  const { data: submissionData } = assignmentSubmissions;
+
+  const statsCards = success
+    ? [
+        {
+          title: "Total Students",
+          value: summary.stats.totalStudentCount,
+          icon: Users,
+          status: "Students in this batch",
+          color: "text-blue-500",
+        },
+        {
+          title: "Submitted",
+          value: summary.stats.submittedCount,
+          icon: ClipboardCheck,
+          status: "Assignments submitted",
+          color: "text-green-500",
+        },
+        {
+          title: "Pending",
+          value: summary.stats.pendingCount,
+          icon: CalendarClock,
+          status: "Awaiting submission",
+          color: "text-orange-500",
+        },
+        {
+          title: "Graded",
+          value: summary.stats.gradedCount,
+          icon: Award,
+          status: "Submissions graded",
+          color: "text-purple-500",
+        },
+      ]
+    : [];
 
   return (
     <div className="space-y-5 py-3">
       {/* Assignment header */}
-      {assignmentSummary.success ? (
+      {success ? (
         <>
           <Card>
             <CardContent className="space-y-5 flex justify-between w-full pl-0 pb-5">
               <div className="w-full flex flex-col justify-between">
                 <CardHeader>
                   <CardTitle className="text-2xl">
-                    {assignmentSummary.assignment.title}
+                    {summary.assignment.title}
                   </CardTitle>
 
-                  {(assignmentSummary.assignment.moduleName ||
-                    assignmentSummary.assignment.lessonName) && (
+                  {(summary.assignment.moduleName ||
+                    summary.assignment.lessonName) && (
                     <p className="text-sm text-muted-foreground">
                       {[
-                        assignmentSummary.assignment.moduleName,
-                        assignmentSummary.assignment.lessonName,
+                        summary.assignment.moduleName,
+                        summary.assignment.lessonName,
                       ]
                         .filter(Boolean)
                         .join(" • ")}
@@ -100,9 +105,9 @@ const TrainerSubmissionsPage = async ({
                       <p className="font-medium">Instructions</p>
                     </div>
 
-                    {assignmentSummary.assignment.instructions ? (
+                    {summary.assignment.instructions ? (
                       <p className="whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
-                        {assignmentSummary.assignment.instructions}
+                        {summary.assignment.instructions}
                       </p>
                     ) : (
                       <p className="text-sm text-muted-foreground">
@@ -121,7 +126,7 @@ const TrainerSubmissionsPage = async ({
                   </div>
 
                   <p className="mt-1 font-medium">
-                    {formatDate(assignmentSummary.assignment.dueAt)}
+                    {formatDate(summary.assignment.dueAt)}
                   </p>
                 </div>
 
@@ -132,7 +137,7 @@ const TrainerSubmissionsPage = async ({
                   </div>
 
                   <p className="mt-1 text-lg font-semibold">
-                    {assignmentSummary.assignment.maxMarks}
+                    {summary.assignment.maxMarks}
                   </p>
                 </div>
               </div>
@@ -141,7 +146,7 @@ const TrainerSubmissionsPage = async ({
 
           {/* Submission stats */}
           <DashboardStatsGrid
-            success={assignmentSummary.success}
+            success={success}
             cards={statsCards}
             className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
           />
@@ -159,7 +164,7 @@ const TrainerSubmissionsPage = async ({
       <div className="mt-10">
         <DataTable
           columns={columns}
-          data={assignmentSubmissions.submissions}
+          data={submissionData.submissions}
           globalFilterColumns={["student.fullName", "student.rollNumber"]}
         />
       </div>

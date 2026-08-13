@@ -16,7 +16,7 @@ import {
 import { db } from "../db";
 import { nanoid } from "nanoid";
 import { AssignmentSubmissionFormSchema, AssignmentSubmissionGradingFormSchema, AssignmentWithReferencesFormSchema } from "../zod/trainer.schema";
-import z from "zod";
+import z, { ZodError } from "zod";
 import { requireRole, requireTrainer } from "./auth.action";
 import { revalidatePath } from "next/cache";
 import { Assignment } from "@/app/(pages)/(dashboard)/trainer/batches/[batchId]/assignments/columns";
@@ -653,178 +653,122 @@ export async function deleteAssignment(
   }
 }
 
-export async function getStudentPortalAssignments(
-  batchId: string,
-) {
-  // ------------------------------------------------------------
-  // 1. Authenticate + validate role
-  // ------------------------------------------------------------
-
+/**
+ * Retrieves all published assignments for a student's batch, including
+ * assignment reference links, the student's submissions, and submission links.
+ *
+ * @param {string} batchId - Batch ID for which to retrieve assignments.
+ * @returns {Promise<Object>} Result containing the student's assignments and
+ * associated submission details, or an error response if the student profile
+ * or enrollment is not found.
+ * @throws {Error} If fetching assignments or related data fails.
+ */
+export async function getStudentPortalAssignments(batchId: string) {
+  // Authorize User
   const user = await requireRole("student");
 
-  // ------------------------------------------------------------
-  // 2. Find the student's profile
-  // ------------------------------------------------------------
-
-  const [student] = await db
-    .select({
-      id: studentProfiles.id,
-    })
-    .from(studentProfiles)
-    .where(
-      and(
-        eq(studentProfiles.userId, user.id),
-        isNull(studentProfiles.deletedAt),
-      ),
-    )
-    .limit(1);
-
-  if (!student) {
-    throw new Error("Student profile not found");
-  }
-
-  // ------------------------------------------------------------
-  // 3. Verify student is enrolled in this batch
-  // ------------------------------------------------------------
-
-  const [enrollment] = await db
-    .select({
-      id: enrollments.id,
-      batchId: enrollments.batchId,
-      status: enrollments.status,
-    })
-    .from(enrollments)
-    .where(
-      and(
-        eq(enrollments.batchId, batchId),
-        eq(enrollments.studentId, student.id),
-        isNull(enrollments.deletedAt),
-      ),
-    )
-    .limit(1);
-
-  if (!enrollment) {
-    throw new Error("You are not enrolled in this batch");
-  }
-
-  // ------------------------------------------------------------
-  // 4. Get assignments
-  // ------------------------------------------------------------
-
-  const assignmentRows = await db
-    .select({
-      assignmentId: assignments.id,
-      title: assignments.title,
-      instructions: assignments.instructions,
-
-      moduleName: courseModules.title,
-      lessonName: moduleLessons.title,
-
-      maxMarks: assignments.maxMarks,
-
-      batchId: assignments.batchId,
-
-      createdAt: assignments.createdAt,
-      dueAt: assignments.dueAt,
-    })
-    .from(assignments)
-    .leftJoin(
-      courseModules,
-      eq(assignments.moduleId, courseModules.id),
-    )
-    .leftJoin(
-      moduleLessons,
-      eq(assignments.lessonId, moduleLessons.id),
-    )
-    .where(
-      and(
-        eq(assignments.batchId, batchId),
-        eq(assignments.status, "published"),
-        isNull(assignments.deletedAt),
-      ),
-    )
-    .orderBy(assignments.dueAt);
-
-  // No assignments
-  if (assignmentRows.length === 0) {
-    return [];
-  }
-
-  const assignmentIds = assignmentRows.map(
-    (assignment) => assignment.assignmentId,
-  );
-
-  // ------------------------------------------------------------
-  // 5. Get assignment reference links
-  // ------------------------------------------------------------
-
-  const assignmentReferenceLinksResult =
-    await db
+  try {
+    // Find the current student's profile.
+    const [student] = await db
       .select({
-        id: assignmentReferenceLinks.id,
-        assignmentId: assignmentReferenceLinks.assignmentId,
-        title: assignmentReferenceLinks.title,
-        url: assignmentReferenceLinks.url,
+        id: studentProfiles.id,
       })
-      .from(assignmentReferenceLinks)
+      .from(studentProfiles)
       .where(
         and(
-          inArray(
-            assignmentReferenceLinks.assignmentId,
-            assignmentIds,
-          ),
-          eq(
-            assignmentReferenceLinks.resourceType,
-            "assignment",
-          ),
+          eq(studentProfiles.userId, user.id),
+          isNull(studentProfiles.deletedAt),
         ),
-      );
+      )
+      .limit(1);
 
-  // ------------------------------------------------------------
-  // 6. Get student's submissions
-  // ------------------------------------------------------------
+    // if the student profile does not exist.
+    if (!student) {
+      return {
+        success: false,
+        data: null,
+        error: "Student profile not found",
+      };
+    }
 
-  const submissions = await db
-    .select({
-      id: assignmentSubmissions.id,
-      assignmentId: assignmentSubmissions.assignmentId,
-
-      status: assignmentSubmissions.status,
-      submittedAt: assignmentSubmissions.submittedAt,
-      submissionNote: assignmentSubmissions.submissionNote,
-      marksObtained: assignmentSubmissions.marksObtained,
-      teacherFeedback: assignmentSubmissions.teacherFeedback,
-      gradedAt: assignmentSubmissions.gradedAt,
-    })
-    .from(assignmentSubmissions)
-    .where(
-      and(
-        eq(
-          assignmentSubmissions.enrollmentId,
-          enrollment.id,
+    // Find the student's enrollment in this batch.
+    const [enrollment] = await db
+      .select({
+        id: enrollments.id,
+        batchId: enrollments.batchId,
+        status: enrollments.status,
+      })
+      .from(enrollments)
+      .where(
+        and(
+          eq(enrollments.batchId, batchId),
+          eq(enrollments.studentId, student.id),
+          isNull(enrollments.deletedAt),
         ),
-        inArray(
-          assignmentSubmissions.assignmentId,
-          assignmentIds,
+      )
+      .limit(1);
+
+    // if the enrollment does not exist.
+    if (!enrollment) {
+      return {
+        success: false,
+        data: null,
+        error: "You are not enrolled in this batch",
+      };
+    }
+
+    // Fetch all published assignments for the batch.
+    const assignmentRows = await db
+      .select({
+        assignmentId: assignments.id,
+        title: assignments.title,
+        instructions: assignments.instructions,
+        moduleName: courseModules.title,
+        lessonName: moduleLessons.title,
+        maxMarks: assignments.maxMarks,
+        batchId: assignments.batchId,
+        assignedAt: assignments.assignedAt,
+        dueAt: assignments.dueAt,
+      })
+      .from(assignments)
+      .leftJoin(
+        courseModules,
+        eq(assignments.moduleId, courseModules.id),
+      )
+      .leftJoin(
+        moduleLessons,
+        eq(assignments.lessonId, moduleLessons.id),
+      )
+      .where(
+        and(
+          eq(assignments.batchId, batchId),
+          eq(assignments.status, "published"),
+          isNull(assignments.deletedAt),
         ),
-      ),
+      )
+      .orderBy(assignments.dueAt);
+
+    // if there are no assignments.
+    if (assignmentRows.length === 0) {
+      return {
+        success: true,
+        data: [],
+      };
+    }
+
+    // Extract assignment IDs for related queries.
+    const assignmentIds = assignmentRows.map(
+      ({ assignmentId }) => assignmentId,
     );
 
-  const submissionIds = submissions.map(
-    (submission) => submission.id,
-  );
-
-  // ------------------------------------------------------------
-  // 7. Get submission reference links
-  // ------------------------------------------------------------
-
-  const submissionReferenceLinks =
-    submissionIds.length > 0
-      ? await db
+    // Fetch assignment links and student submissions in parallel.
+    const [assignmentReferenceLinksResult, submissions] =
+      await Promise.all([
+        // Get reference links attached to assignments.
+        db
           .select({
             id: assignmentReferenceLinks.id,
-            submissionId:
-              assignmentReferenceLinks.submissionId,
+            assignmentId: assignmentReferenceLinks.assignmentId,
             title: assignmentReferenceLinks.title,
             url: assignmentReferenceLinks.url,
           })
@@ -832,370 +776,451 @@ export async function getStudentPortalAssignments(
           .where(
             and(
               inArray(
-                assignmentReferenceLinks.submissionId,
-                submissionIds,
+                assignmentReferenceLinks.assignmentId,
+                assignmentIds,
               ),
               eq(
                 assignmentReferenceLinks.resourceType,
-                "assignment_submission",
+                "assignment",
               ),
             ),
-          )
-      : [];
+          ),
 
-  // ------------------------------------------------------------
-  // 8. Create lookup maps
-  // ------------------------------------------------------------
+        // Get this student's submissions for the assignments.
+        db
+          .select({
+            id: assignmentSubmissions.id,
+            assignmentId: assignmentSubmissions.assignmentId,
+            status: assignmentSubmissions.status,
+            submittedAt: assignmentSubmissions.submittedAt,
+            submissionNote: assignmentSubmissions.submissionNote,
+            marksObtained: assignmentSubmissions.marksObtained,
+            teacherFeedback: assignmentSubmissions.teacherFeedback,
+            gradedAt: assignmentSubmissions.gradedAt,
+          })
+          .from(assignmentSubmissions)
+          .where(
+            and(
+              eq(
+                assignmentSubmissions.enrollmentId,
+                enrollment.id,
+              ),
+              inArray(
+                assignmentSubmissions.assignmentId,
+                assignmentIds,
+              ),
+            ),
+          ),
+      ]);
 
-  const assignmentLinksByAssignmentId = new Map<
-    string,
-    {
-    id: string;
-    title: string;
-    url: string;
-  }[]
-  >();
+    // Extract submission IDs for fetching submission links.
+    const submissionIds = submissions.map(({ id }) => id);
 
-  for (const link of assignmentReferenceLinksResult) {
-    const existing =
-      assignmentLinksByAssignmentId.get(link.assignmentId) ?? [];
+    // Fetch links attached to student submissions.
+    const submissionReferenceLinks =
+      submissionIds.length > 0
+        ? await db
+            .select({
+              id: assignmentReferenceLinks.id,
+              submissionId: assignmentReferenceLinks.submissionId,
+              title: assignmentReferenceLinks.title,
+              url: assignmentReferenceLinks.url,
+            })
+            .from(assignmentReferenceLinks)
+            .where(
+              and(
+                inArray(
+                  assignmentReferenceLinks.submissionId,
+                  submissionIds,
+                ),
+                eq(
+                  assignmentReferenceLinks.resourceType,
+                  "assignment_submission",
+                ),
+              ),
+            )
+        : [];
 
-    existing.push({
-      id: link.id,
-      title: link.title,
-      url: link.url,
+    // Create a map for quick assignment-link lookup.
+    const assignmentLinksById = new Map< string, {
+        id: string;
+        title: string;
+        url: string;
+      }[]
+    >();
+
+    // Group assignment links by assignment ID.
+    for (const link of assignmentReferenceLinksResult) {
+      // Get existing links or create an empty list.
+      const links = assignmentLinksById.get(link.assignmentId) ?? [];
+
+      // Push the link to the list.
+      links.push({
+        id: link.id,
+        title: link.title,
+        url: link.url,
+      });
+
+      // Update the map with the links for this assignment.
+      assignmentLinksById.set(link.assignmentId, links);
+    }
+
+    // Create a map for quick submission lookup by assignment.
+    const submissionsByAssignmentId = new Map(
+      submissions.map((submission) => [
+        submission.assignmentId,
+        submission,
+      ]),
+    );
+
+    // Create a map for quick submission-link lookup.
+    const submissionLinksById = new Map<string, {
+        id: string;
+        title: string;
+        url: string;
+      }[]>();
+
+    // Group submission links by submission ID.
+    for (const link of submissionReferenceLinks) {
+      // Skip links without a submission ID.
+      if (!link.submissionId) continue;
+
+      // Get existing links or create an empty list.
+      const links = submissionLinksById.get(link.submissionId) ?? [];
+
+      // Push the link to the list.
+      links.push({
+        id: link.id,
+        title: link.title,
+        url: link.url,
+      });
+
+      // Save the updated links for this submission.
+      submissionLinksById.set(link.submissionId, links);
+    }
+
+    // Build the final assignment response.
+    const data = assignmentRows.map((assignment) => {
+      // Find the student's submission for this assignment.
+      const submission = submissionsByAssignmentId.get(
+        assignment.assignmentId,
+      );
+
+      // Return assignment data with links and submission details.
+      return {
+        assignmentId: assignment.assignmentId,
+        title: assignment.title,
+        instructions: assignment.instructions,
+        moduleName: assignment.moduleName ?? null,
+        lessonName: assignment.lessonName ?? null,
+        maxMarks: assignment.maxMarks,
+        batchId: assignment.batchId,
+        assignedAt: assignment.assignedAt,
+        dueAt: assignment.dueAt,
+
+        assignment_reference_links:
+          assignmentLinksById.get(assignment.assignmentId) ?? [],
+
+        submission: submission
+          ? {
+              id: submission.id,
+              status:
+                submission.status as AssignmentSubmissionStatus,
+              submissionNote: submission.submissionNote,
+              submittedAt: submission.submittedAt ?? null,
+              marksObtained: submission.marksObtained ?? null,
+              teacherFeedback:
+                submission.teacherFeedback ?? null,
+              gradedAt: submission.gradedAt ?? null,
+
+              submission_reference_links:
+                submissionLinksById.get(submission.id) ?? [],
+            }
+          : null,
+      };
     });
 
-    assignmentLinksByAssignmentId.set(
-      link.assignmentId,
-      existing,
-    );
-  }
-
-  const submissionByAssignmentId = new Map<
-    string,
-    {
-    id: string;
-    assignmentId: string;
-    status: AssignmentSubmissionStatus;
-    submissionNote: string | null;
-    submittedAt: Date | null;
-    marksObtained: number | null;
-    teacherFeedback: string | null;
-    gradedAt: Date | null;
-  }
-  >();
-
-  for (const submission of submissions) {
-    submissionByAssignmentId.set(
-      submission.assignmentId,
-      submission,
-    );
-  }
-
-  const submissionLinksBySubmissionId = new Map<
-    string,
-    {
-    id: string;
-    title: string;
-    url: string;
-  }[]
-  >();
-
-  for (const link of submissionReferenceLinks) {
-    if (!link.submissionId) continue;
-
-    const existing =
-      submissionLinksBySubmissionId.get(link.submissionId) ?? [];
-
-    existing.push({
-      id: link.id,
-      title: link.title,
-      url: link.url,
-    });
-
-    submissionLinksBySubmissionId.set(
-      link.submissionId,
-      existing,
-    );
-  }
-
-  // ------------------------------------------------------------
-  // 9. Build final response
-  // ------------------------------------------------------------
-
-  return assignmentRows.map((assignment) => {
-    const submission = submissionByAssignmentId.get(
-      assignment.assignmentId,
-    );
-
+    // Return the final assignment data.
     return {
-      assignmentId: assignment.assignmentId,
-      title: assignment.title,
-      instructions: assignment.instructions,
-
-      moduleName: assignment.moduleName ?? null,
-      lessonName: assignment.lessonName ?? null,
-
-      maxMarks: assignment.maxMarks,
-
-      batchId: assignment.batchId,
-
-      // Your requested shape says assignedAt = assignment.createdAt
-      assignedAt: assignment.createdAt,
-
-      dueAt: assignment.dueAt,
-
-      assignment_reference_links:
-        assignmentLinksByAssignmentId.get(
-          assignment.assignmentId,
-        ) ?? [],
-
-      submission: submission
-        ? {
-            id: submission.id,
-            status: submission.status as AssignmentSubmissionStatus,
-
-            submissionNote: submission.submissionNote,
-
-            submittedAt:
-              submission.submittedAt ?? null,
-
-            marksObtained:
-              submission.marksObtained ?? null,
-
-            teacherFeedback:
-              submission.teacherFeedback ?? null,
-
-            gradedAt:
-              submission.gradedAt ?? null,
-
-            submission_reference_links:
-              submissionLinksBySubmissionId.get(
-                submission.id,
-              ) ?? [],
-          }
-        : null,
+      success: true,
+      data,
     };
-  });
+  } catch (error) {
+    console.error(
+      "Failed to get student portal assignments:",
+      error,
+    );
+
+    // Return a safe error response.
+    return {
+      success: false,
+      data: null,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to fetch assignments",
+    };
+  }
 }
 
+ /**
+  * Submits a student's assignment with optional reference links.
+  *
+  * @param {string} assignmentId - Assignment ID to submit.
+  * @param {unknown} input - Submission data to validate and save.
+  * @returns {Promise<Object>} Submission result with a success message or error.
+  */
 export async function submitAssignment(
   assignmentId: string,
   input: unknown,
-) {
-  // ------------------------------------------------------------
-  // 1. Validate input
-  // ------------------------------------------------------------
-  const validated = AssignmentSubmissionFormSchema.parse(input);
-
-  // ------------------------------------------------------------
-  // 2. Authorize student
-  // ------------------------------------------------------------
+): Promise<{
+  success: boolean;
+  message?: string;
+  error?: string;
+}> {
+  // Authorize User
   const user = await requireRole("student");
 
-  // ------------------------------------------------------------
-  // 3. Find the student's profile
-  // ------------------------------------------------------------
-  const [student] = await db
-    .select({
-      id: studentProfiles.id,
-    })
-    .from(studentProfiles)
-    .where(
-      and(
-        eq(studentProfiles.userId, user.id),
-        isNull(studentProfiles.deletedAt),
-      ),
-    )
-    .limit(1);
+  try {
+    // Validate the submission input.
+    const validated = AssignmentSubmissionFormSchema.parse(input);
 
-  if (!student) {
-    throw new Error("Student profile not found");
-  }
+    // Fetch the student and assignment in parallel.
+    const [[student], [assignment]] = await Promise.all([
+      db
+        .select({
+          id: studentProfiles.id,
+        })
+        .from(studentProfiles)
+        .where(
+          and(
+            eq(studentProfiles.userId, user.id),
+            isNull(studentProfiles.deletedAt),
+          ),
+        )
+        .limit(1),
 
-  // ------------------------------------------------------------
-  // 4. Find assignment
-  // ------------------------------------------------------------
-  const [assignment] = await db
-    .select({
-      id: assignments.id,
-      batchId: assignments.batchId,
-      dueAt: assignments.dueAt,
-      status: assignments.status,
-    })
-    .from(assignments)
-    .where(
-      and(
-        eq(assignments.id, assignmentId),
-        isNull(assignments.deletedAt),
-      ),
-    )
-    .limit(1);
+      db
+        .select({
+          id: assignments.id,
+          batchId: assignments.batchId,
+          dueAt: assignments.dueAt,
+          status: assignments.status,
+        })
+        .from(assignments)
+        .where(
+          and(
+            eq(assignments.id, assignmentId),
+            isNull(assignments.deletedAt),
+          ),
+        )
+        .limit(1),
+    ]);
 
-  if (!assignment) {
-    throw new Error("Assignment not found");
-  }
-
-  // ------------------------------------------------------------
-  // 5. Make sure assignment is available for submission
-  // ------------------------------------------------------------
-  if (assignment.status !== "published") {
-    throw new Error("This assignment is not available for submission");
-  }
-
-  // ------------------------------------------------------------
-  // 6. Verify student belongs to assignment's batch
-  // ------------------------------------------------------------
-  const [enrollment] = await db
-    .select({
-      id: enrollments.id,
-      status: enrollments.status,
-    })
-    .from(enrollments)
-    .where(
-      and(
-        eq(enrollments.batchId, assignment.batchId),
-        eq(enrollments.studentId, student.id),
-        isNull(enrollments.deletedAt),
-      ),
-    )
-    .limit(1);
-
-  if (!enrollment) {
-    throw new Error("You are not enrolled in this assignment's batch");
-  }
-
-  // A dropped/suspended student should not be able to submit.
-  if (
-    enrollment.status !== "active" &&
-    enrollment.status !== "completed"
-  ) {
-    throw new Error("Your enrollment is not active");
-  }
-
-  // ------------------------------------------------------------
-  // 7. Make sure this assignment has not already been submitted
-  // ------------------------------------------------------------
-  const [existingSubmission] = await db
-    .select({
-      id: assignmentSubmissions.id,
-      status: assignmentSubmissions.status,
-    })
-    .from(assignmentSubmissions)
-    .where(
-      and(
-        eq(assignmentSubmissions.assignmentId, assignmentId),
-        eq(assignmentSubmissions.enrollmentId, enrollment.id),
-      ),
-    )
-    .limit(1);
-
-  if (existingSubmission) {
-    throw new Error("You have already submitted this assignment");
-  }
-
-  // ------------------------------------------------------------
-  // 8. Determine submission status
-  // ------------------------------------------------------------
-  const submittedAt = new Date();
-
-const today = new Date(
-  submittedAt.getFullYear(),
-  submittedAt.getMonth(),
-  submittedAt.getDate(),
-);
-
-const dueDate = new Date(
-  assignment.dueAt.getFullYear(),
-  assignment.dueAt.getMonth(),
-  assignment.dueAt.getDate(),
-);
-
-const submissionStatus =
-  today <= dueDate
-    ? "submitted"
-    : "late";
-
-  // ------------------------------------------------------------
-  // 9. Create submission + reference links atomically
-  // ------------------------------------------------------------
-  const result = await db.transaction(async (tx) => {
-    const submissionId = nanoid();
-
-    await tx.insert(assignmentSubmissions).values({
-      id: submissionId,
-
-      assignmentId: assignment.id,
-      enrollmentId: enrollment.id,
-
-      status: submissionStatus,
-      submittedAt,
-      submissionNote: validated.submissionNote,
-
-      // These remain null because the assignment has
-      // not been graded yet.
-      marksObtained: null,
-      teacherFeedback: null,
-      gradedBy: null,
-      gradedAt: null,
-    });
-
-    // ----------------------------------------------------------
-    // 10. Create reference links
-    // ----------------------------------------------------------
-    if (validated.referenceLinks.length > 0) {
-      await tx.insert(assignmentReferenceLinks).values(
-        validated.referenceLinks.map((link) => ({
-          id: nanoid(),
-
-          assignmentId: assignment.id,
-          submissionId,
-
-          resourceType: "assignment_submission" as const,
-
-          title: link.title,
-          url: link.url,
-
-          createdAt: new Date(),
-        })),
-      );
+    // if the student profile does not exist.
+    if (!student) {
+      return {
+        success: false,
+        error: "Student profile not found",
+      };
     }
 
-    return {
-      submissionId,
-      status: submissionStatus,
-    };
-  });
+    // if the assignment does not exist.
+    if (!assignment) {
+      return {
+        success: false,
+        error: "Assignment not found",
+      };
+    }
 
-  return {
-    success: true,
-    message:
-      result.status === "late"
-        ? "Assignment submitted late"
-        : "Assignment submitted successfully",
-    submissionId: result.submissionId,
-    status: result.status,
-  };
+    // if the assignment is not published.
+    if (assignment.status !== "published") {
+      return {
+        success: false,
+        error: "This assignment is not available for submission",
+      };
+    }
+
+    // Find the student's enrollment in the assignment's batch.
+    const [enrollment] = await db
+      .select({
+        id: enrollments.id,
+        status: enrollments.status,
+      })
+      .from(enrollments)
+      .where(
+        and(
+          eq(enrollments.batchId, assignment.batchId),
+          eq(enrollments.studentId, student.id),
+          isNull(enrollments.deletedAt),
+        ),
+      )
+      .limit(1);
+
+      // if the enrollment does not exist.
+    if (!enrollment) {
+      return {
+        success: false,
+        error: "You are not enrolled in this assignment's batch",
+      };
+    }
+
+    // Check if the student's enrollment is allowed to submit.
+    if (
+      enrollment.status !== "active" &&
+      enrollment.status !== "completed"
+    ) {
+      return {
+        success: false,
+        error: "Your enrollment is not active",
+      };
+    }
+
+    // Check if the student has already submitted this assignment.
+    const [existingSubmission] = await db
+      .select({
+        id: assignmentSubmissions.id,
+      })
+      .from(assignmentSubmissions)
+      .where(
+        and(
+          eq(
+            assignmentSubmissions.assignmentId,
+            assignment.id,
+          ),
+          eq(
+            assignmentSubmissions.enrollmentId,
+            enrollment.id,
+          ),
+        ),
+      )
+      .limit(1);
+
+    // if a submission already exists.
+    if (existingSubmission) {
+      return {
+        success: false,
+        error: "You have already submitted this assignment",
+      };
+    }
+
+    // Create the submission timestamp.
+    const submittedAt = new Date();
+
+    // Get the submitted date without the time.
+    const submittedDate = new Date(
+      submittedAt.getFullYear(),
+      submittedAt.getMonth(),
+      submittedAt.getDate(),
+    );
+
+    // Get the due date without the time.
+    const dueDate = new Date(
+      assignment.dueAt.getFullYear(),
+      assignment.dueAt.getMonth(),
+      assignment.dueAt.getDate(),
+    );
+
+    // Determine whether the submission is on time or late.
+    const submissionStatus = submittedDate <= dueDate ? "submitted" : "late";
+
+    try {
+      // Save the submission and its links atomically.
+      const result = await db.transaction(async (tx) => {
+        const submissionId = nanoid();
+
+        // Create the assignment submission.
+        await tx.insert(assignmentSubmissions).values({
+          id: submissionId,
+          assignmentId: assignment.id,
+          enrollmentId: enrollment.id,
+          status: submissionStatus,
+          submittedAt,
+          submissionNote: validated.submissionNote,
+          marksObtained: null,
+          teacherFeedback: null,
+          gradedBy: null,
+          gradedAt: null,
+        });
+
+        // Save the submission links.
+        if (validated.referenceLinks.length > 0) {
+          await tx.insert(assignmentReferenceLinks).values(
+            validated.referenceLinks.map((link) => ({
+              id: nanoid(),
+              assignmentId: assignment.id,
+              submissionId,
+              resourceType: "assignment_submission" as const,
+              title: link.title,
+              url: link.url,
+              createdAt: submittedAt,
+            })),
+          );
+        }
+
+        // Return the created submission details.
+        return {
+          submissionId,
+          status: submissionStatus,
+        };
+      });
+
+      // Return a success message based on submission status.
+      return {
+        success: true,
+        message:
+          result.status === "late"
+            ? "Assignment submitted late"
+            : "Assignment submitted successfully",
+      };
+    } catch (error) {
+      // Handle duplicate submission errors from the database.
+      if ( error && typeof error === "object" && "errno" in error && error.errno === 1062) {
+        return {
+          success: false,
+          error: "You have already submitted this assignment",
+        };
+      }
+
+      // Re-throw unexpected transaction errors.
+      throw error;
+    }
+  } catch (error) {
+    // Handle validation errors from Zod.
+    if (error instanceof ZodError) {
+      return {
+        success: false,
+        error: "Invalid submission data",
+      };
+    }
+
+    console.error("Failed to submit assignment:", error);
+
+    // Return a safe error response.
+    return {
+      success: false,
+      error: "Failed to submit assignment",
+    };
+  }
 }
 
+
+
+ /**
+  * Retrieves assignment details and submission statistics for a trainer's batch.
+  *
+  * @param {string} batchId - Batch ID containing the assignment.
+  * @param {string} assignmentId - Assignment ID to retrieve.
+  * @returns {Promise<Object>} Assignment details with student submission statistics.
+  */
 export async function getAssignmentSubmissionsSummary(
   batchId: string,
   assignmentId: string,
 ) {
-  // ------------------------------------------------------------
-  // 1. Authorize trainer
-  // ------------------------------------------------------------
+  // Authorize Trainer
   const { trainer } = await requireTrainer();
 
-  // ------------------------------------------------------------
-  // 2. Get assignment
-  //
-  // Verify all of these:
-  // - assignment exists
-  // - assignment belongs to the supplied batch
-  // - batch belongs to the authenticated trainer
-  // ------------------------------------------------------------
+  // Find the assignment and verify trainer access to the batch.
   const [assignment] = await db
     .select({
       id: assignments.id,
@@ -1203,9 +1228,6 @@ export async function getAssignmentSubmissionsSummary(
       instructions: assignments.instructions,
       dueAt: assignments.dueAt,
       maxMarks: assignments.maxMarks,
-
-      batchId: courseBatches.id,
-
       moduleName: courseModules.title,
       lessonName: moduleLessons.title,
     })
@@ -1226,77 +1248,73 @@ export async function getAssignmentSubmissionsSummary(
       and(
         eq(assignments.id, assignmentId),
         eq(assignments.batchId, batchId),
-        eq(courseBatches.id, batchId),
         eq(courseBatches.trainerId, trainer.id),
-
         isNull(assignments.deletedAt),
         isNull(courseBatches.deletedAt),
       ),
     )
     .limit(1);
 
+  // Handle cases where assignment is not found.
   if (!assignment) {
     notFound();
   }
 
-  // ------------------------------------------------------------
-  // 3. Count active students in this batch
-  // ------------------------------------------------------------
-  const [studentStats] = await db
-    .select({
-      totalStudentCount: count(enrollments.id),
-    })
-    .from(enrollments)
-    .where(
-      and(
-        eq(enrollments.batchId, batchId),
-        eq(enrollments.status, "active"),
-        isNull(enrollments.deletedAt),
-      ),
-    );
+  // Fetch statistics for students and submissions in parallel.
+  const [[studentStats], [submissionStats]] =
+    await Promise.all([
+      // Count all active students in the batch.
+      db
+        .select({
+          totalStudentCount: count(enrollments.id),
+        })
+        .from(enrollments)
+        .where(
+          and(
+            eq(enrollments.batchId, batchId),
+            eq(enrollments.status, "active"),
+            isNull(enrollments.deletedAt),
+          ),
+        ),
 
-  // ------------------------------------------------------------
-  // 4. Count assignment submissions
-  // ------------------------------------------------------------
-  const [submissionStats] = await db
-    .select({
-      submittedCount: count(assignmentSubmissions.id),
-
-      gradedCount: sql<number>`
-        COUNT(
-          CASE
-            WHEN ${assignmentSubmissions.status} = 'graded'
-            AND ${assignmentSubmissions.marksObtained} IS NOT NULL
-            THEN 1
-          END
+        // Count submitted and graded assignments.
+      db
+        .select({
+          submittedCount: count(
+            assignmentSubmissions.id,
+          ),
+          gradedCount: sql<number>`
+            COUNT(
+              CASE
+                WHEN ${assignmentSubmissions.status} = 'graded'
+                  AND ${assignmentSubmissions.marksObtained} IS NOT NULL
+                THEN 1
+              END
+            )
+          `,
+        })
+        .from(assignmentSubmissions)
+        .innerJoin(
+          enrollments,
+          eq(
+            assignmentSubmissions.enrollmentId,
+            enrollments.id,
+          ),
         )
-      `,
-    })
-    .from(assignmentSubmissions)
-    .innerJoin(
-      enrollments,
-      eq(
-        assignmentSubmissions.enrollmentId,
-        enrollments.id,
-      ),
-    )
-    .where(
-      and(
-        eq(assignmentSubmissions.assignmentId, assignmentId),
-        eq(assignmentSubmissions.enrollmentId, enrollments.id),
+        .where(
+          and(
+            eq(
+              assignmentSubmissions.assignmentId,
+              assignmentId,
+            ),
+            eq(enrollments.batchId, batchId),
+            eq(enrollments.status, "active"),
+            isNull(enrollments.deletedAt),
+          ),
+        ),
+    ]);
 
-        // Make sure the submission belongs to this batch.
-        eq(enrollments.batchId, batchId),
-
-        // Only count current active enrollments.
-        eq(enrollments.status, "active"),
-        isNull(enrollments.deletedAt),
-      ),
-    );
-
-  // ------------------------------------------------------------
-  // 5. Normalize stats
-  // ------------------------------------------------------------
+    // Convert database count values to numbers.
   const totalStudentCount = Number(
     studentStats?.totalStudentCount ?? 0,
   );
@@ -1309,39 +1327,46 @@ export async function getAssignmentSubmissionsSummary(
     submissionStats?.gradedCount ?? 0,
   );
 
-  const pendingCount = Math.max(
-    totalStudentCount - submittedCount,
-    0,
-  );
-
-  // ------------------------------------------------------------
-  // 6. Return response
-  // ------------------------------------------------------------
+  // Return assignment details and submission statistics.
   return {
     success: true,
-
-    assignment: {
+    data: {
+      assignment: {
       title: assignment.title,
       instructions: assignment.instructions,
       dueAt: assignment.dueAt,
       maxMarks: assignment.maxMarks,
-      moduleName: assignment.moduleName,
-      lessonName: assignment.lessonName,
+      moduleName: assignment.moduleName ?? null,
+      lessonName: assignment.lessonName ?? null,
     },
-
     stats: {
       totalStudentCount,
       submittedCount,
-      pendingCount,
+      pendingCount: Math.max(
+        totalStudentCount - submittedCount,
+        0,
+      ),
       gradedCount,
     },
+    }
   };
 }
 
+/**
+ * Retrieves all active students and their submission details for an assignment.
+ *
+ * @param {string} batchId - Batch ID containing the assignment.
+ * @param {string} assignmentId - Assignment ID to retrieve submissions for.
+ * @returns {Promise<Object>} Student submission data formatted for a datatable.
+ */
 export async function getAssignmentSubmissionsDatatable(
   batchId: string,
   assignmentId: string,
 ) {
+  // Authorize Trainer
+  const { trainer } = await requireTrainer();
+
+  // Fetch all active students and their assignment submissions.
   const rows = await db
     .select({
       studentId: studentProfiles.id,
@@ -1367,11 +1392,24 @@ export async function getAssignmentSubmissionsDatatable(
     )
     .innerJoin(
       assignments,
-      eq(assignments.id, assignmentId),
+      and(
+        eq(assignments.id, assignmentId),
+        eq(assignments.batchId, batchId),
+      ),
+    )
+    .innerJoin(
+      courseBatches,
+      and(
+        eq(courseBatches.id, batchId),
+        eq(courseBatches.trainerId, trainer.id),
+      ),
     )
     .leftJoin(
       assets,
-      eq(users.avatarAssetId, assets.id),
+      and(
+        eq(users.avatarAssetId, assets.id),
+        isNull(assets.deletedAt),
+      ),
     )
     .leftJoin(
       assignmentSubmissions,
@@ -1393,153 +1431,195 @@ export async function getAssignmentSubmissionsDatatable(
         isNull(enrollments.deletedAt),
         isNull(studentProfiles.deletedAt),
         isNull(users.deletedAt),
+        isNull(courseBatches.deletedAt),
+        isNull(assignments.deletedAt),
       ),
     )
     .orderBy(studentProfiles.rollNumber);
 
+  // Return student submission data in datatable format.
   return {
     success: true,
-
-    submissions: rows.map((row) => ({
+    data: {
+      submissions: rows.map((row) => ({
       student: {
         id: row.studentId,
         fullName: row.fullName,
-        AvatarUrl: row.avatarUrl ?? null,
+        avatarUrl: row.avatarUrl ?? null,
         rollNumber: row.rollNumber,
       },
-
-      submissionId: row.submissionId ??"",
-      submissionStatus: row.submissionStatus ?? "not_submitted",
+      submissionId: row.submissionId ?? "",
+      submissionStatus:
+        row.submissionStatus ?? "not_submitted",
       submittedAt: row.submittedAt ?? null,
-      marksObtained: Number(row.marksObtained) ?? null,
+      marksObtained:
+        row.marksObtained !== null
+          ? Number(row.marksObtained)
+          : null,
       maxMarks: Number(row.maxMarks),
-    })),
+    }))
+    }
   };
 }
 
+/**
+ * Grades a student's assignment submission with marks and teacher feedback.
+ *
+ * @param {Object} payload - Grading payload.
+ * @param {string} payload.submissionId - Submission ID to grade.
+ * @param {number} payload.obtainedMarks - Marks obtained by the student.
+ * @param {string} payload.teacherFeedback - Feedback from the trainer.
+ * @returns {Promise<Object>} Grading result with success/error status.
+ */
 export async function gradeAssignmentSubmission(
   payload: {
     submissionId: string;
-    obtainedMarks: string;
+    obtainedMarks: number;
     teacherFeedback: string;
   },
 ) {
+  // Authorize Trainer
   const { trainer } = await requireTrainer();
 
-  // ------------------------------------------------------------
-  // 1. Get submission + assignment max marks
-  // ------------------------------------------------------------
-  const [submission] = await db
-    .select({
-      id: assignmentSubmissions.id,
-      status: assignmentSubmissions.status,
-      maxMarks: assignments.maxMarks,
-    })
-    .from(assignmentSubmissions)
-    .innerJoin(
-      assignments,
-      eq(
-        assignmentSubmissions.assignmentId,
-        assignments.id,
-      ),
-    )
-    .where(
-      eq(
-        assignmentSubmissions.id,
-        payload.submissionId,
-      ),
-    )
-    .limit(1);
+  try {
+    // Find the submission and verify trainer access.
+    const [submission] = await db
+      .select({
+        id: assignmentSubmissions.id,
+        status: assignmentSubmissions.status,
+        maxMarks: assignments.maxMarks,
+      })
+      .from(assignmentSubmissions)
+      .innerJoin(
+        assignments,
+        eq(
+          assignmentSubmissions.assignmentId,
+          assignments.id,
+        ),
+      )
+      .innerJoin(
+        courseBatches,
+        and(
+          eq(courseBatches.id, assignments.batchId),
+          eq(courseBatches.trainerId, trainer.id),
+        ),
+      )
+      .where(
+        and(
+          eq(
+            assignmentSubmissions.id,
+            payload.submissionId,
+          ),
+          isNull(assignments.deletedAt),
+          isNull(courseBatches.deletedAt),
+        ),
+      )
+      .limit(1);
 
-  if (!submission) {
-    throw new Error("Submission not found");
+    // if the submission does not exist.
+    if (!submission) {
+      return {
+        success: false,
+        error: "Submission not found",
+      };
+    }
+
+    // if the assignment has not been submitted yet.
+    if (submission.status === "not_submitted") {
+      return {
+        success: false,
+        error:
+          "Cannot grade an assignment that has not been submitted",
+      };
+    }
+
+    // Create a grading schema using the assignment's maximum marks.
+    const GradingSchema =
+      AssignmentSubmissionGradingFormSchema(
+        Number(submission.maxMarks),
+      );
+
+    // Validate the marks and teacher feedback.
+    const validated = GradingSchema.parse({
+      marks: Number(payload.obtainedMarks),
+      feedback: payload.teacherFeedback,
+    });
+
+    // Create the grading timestamp.
+    const gradedAt = new Date();
+
+    // Update the submission with the grading details.
+    await db
+      .update(assignmentSubmissions)
+      .set({
+        status: "graded",
+        marksObtained: Number(validated.marks),
+        teacherFeedback: validated.feedback,
+        gradedBy: trainer.id,
+        gradedAt,
+        updatedAt: gradedAt,
+      })
+      .where(eq(assignmentSubmissions.id, submission.id));
+
+    // Return a successful grading response.
+    return {
+      success: true,
+      message: "Assignment graded successfully",
+    };
+  } catch (error) {
+    // Handle grading validation errors from Zod.
+    if (error instanceof ZodError) {
+      return {
+        success: false,
+        error: "Invalid grading data",
+      };
+    }
+
+    console.error("Failed to grade assignment submission:", error);
+
+    // Return a safe error response.
+    return {
+      success: false,
+      error: "Failed to grade assignment submission",
+    };
   }
-
-  // ------------------------------------------------------------
-  // 2. Don't grade an unsubmitted assignment
-  // ------------------------------------------------------------
-  if (submission.status === "not_submitted") {
-    throw new Error(
-      "Cannot grade an assignment that has not been submitted",
-    );
-  }
-
-  // ------------------------------------------------------------
-  // 3. Validate grading input against assignment max marks
-  // ------------------------------------------------------------
-  const GradingSchema = AssignmentSubmissionGradingFormSchema(
-    Number(submission.maxMarks),
-  );
-
-  const validated = GradingSchema.parse({
-    marks: Number(payload.obtainedMarks),
-    feedback: payload.teacherFeedback,
-  });
-
-  // ------------------------------------------------------------
-  // 4. Update submission
-  // ------------------------------------------------------------
-  const gradedAt = new Date();
-
-  await db
-    .update(assignmentSubmissions)
-    .set({
-      status: "graded",
-
-      marksObtained: Number(validated.marks),
-      teacherFeedback: validated.feedback,
-
-      gradedBy: trainer.id,
-      gradedAt,
-
-      updatedAt: gradedAt,
-    })
-    .where(
-      eq(
-        assignmentSubmissions.id,
-        payload.submissionId,
-      ),
-    );
-
-  // ------------------------------------------------------------
-  // 5. Return response
-  // ------------------------------------------------------------
-  return {
-    success: true,
-    message: "Assignment graded successfully",
-  };
 }
 
+/**
+ * Retrieves a specific assignment submission with student and reference link details.
+ *
+ * @param {string} batchId - Batch ID containing the assignment.
+ * @param {string} assignmentId - Assignment ID associated with the submission.
+ * @param {string} submissionId - Submission ID to retrieve.
+ * @returns {Promise<Object>} Assignment, student, submission, and reference link details.
+ */
 export async function getAssignmentSubmissionBySubmissionId(
   batchId: string,
   assignmentId: string,
   submissionId: string,
 ) {
-  // ------------------------------------------------------------
-  // 1. Authorize trainer
-  // ------------------------------------------------------------
+  // Authorize Trainer
   const { trainer } = await requireTrainer();
 
-  // ------------------------------------------------------------
-  // 2. Get assignment
-  //
-  // We intentionally do NOT check batch ownership here.
-  // The batch has already been validated by the previous action.
-  //
-  // We only verify that this assignment belongs to the
-  // authenticated trainer.
-  // ------------------------------------------------------------
+  // Find the assignment and verify trainer access to the batch.
   const [assignment] = await db
     .select({
       id: assignments.id,
       title: assignments.title,
       assignedAt: assignments.assignedAt,
       maxMarks: assignments.maxMarks,
-
       moduleName: courseModules.title,
       lessonName: moduleLessons.title,
     })
     .from(assignments)
+    .innerJoin(
+      courseBatches,
+      and(
+        eq(courseBatches.id, assignments.batchId),
+        eq(courseBatches.id, batchId),
+        eq(courseBatches.trainerId, trainer.id),
+      ),
+    )
     .leftJoin(
       courseModules,
       eq(assignments.moduleId, courseModules.id),
@@ -1551,29 +1631,24 @@ export async function getAssignmentSubmissionBySubmissionId(
     .where(
       and(
         eq(assignments.id, assignmentId),
-        eq(assignments.createdBy, trainer.id),
         isNull(assignments.deletedAt),
+        isNull(courseBatches.deletedAt),
       ),
     )
     .limit(1);
 
+  // if the assignment does not exist or is not accessible.
   if (!assignment) {
     notFound();
   }
 
-  // ------------------------------------------------------------
-  // 3. Get submission + student information
-  //
-  // The submission must belong to the requested assignment.
-  // ------------------------------------------------------------
+  // Find the requested submission and its student details.
   const [submission] = await db
     .select({
       submissionId: assignmentSubmissions.id,
-
       submissionStatus: assignmentSubmissions.status,
       submittedAt: assignmentSubmissions.submittedAt,
       gradedAt: assignmentSubmissions.gradedAt,
-
       marksObtained: assignmentSubmissions.marksObtained,
       teacherFeedback: assignmentSubmissions.teacherFeedback,
       submissionNote: assignmentSubmissions.submissionNote,
@@ -1600,80 +1675,71 @@ export async function getAssignmentSubmissionBySubmissionId(
     )
     .innerJoin(
       users,
-      eq(
-        studentProfiles.userId,
-        users.id,
-      ),
+      eq(studentProfiles.userId, users.id),
     )
     .leftJoin(
       assets,
-      eq(
-        users.avatarAssetId,
-        assets.id,
+      and(
+        eq(users.avatarAssetId, assets.id),
+        isNull(assets.deletedAt),
       ),
     )
     .where(
       and(
-        eq(
-          assignmentSubmissions.id,
-          submissionId,
-        ),
+        eq(assignmentSubmissions.id, submissionId),
         eq(
           assignmentSubmissions.assignmentId,
           assignmentId,
         ),
+        eq(enrollments.batchId, batchId),
+        isNull(enrollments.deletedAt),
         isNull(studentProfiles.deletedAt),
         isNull(users.deletedAt),
       ),
     )
     .limit(1);
 
+  // if the submission does not exist or is not accessible.
   if (!submission) {
     notFound();
   }
 
-  // ------------------------------------------------------------
-  // 4. Get submission reference links
-  // ------------------------------------------------------------
-  const referenceLinks =
-    await db
-      .select({
-        id: assignmentReferenceLinks.id,
-        title: assignmentReferenceLinks.title,
-        url: assignmentReferenceLinks.url,
-      })
-      .from(assignmentReferenceLinks)
-      .where(
-        and(
-          eq(
-            assignmentReferenceLinks.assignmentId,
-            assignmentId,
-          ),
-          eq(
-            assignmentReferenceLinks.submissionId,
-            submissionId,
-          ),
-          eq(
-            assignmentReferenceLinks.resourceType,
-            "assignment_submission",
-          ),
+  // Fetch reference links attached to the submission.
+  const referenceLinks = await db
+    .select({
+      id: assignmentReferenceLinks.id,
+      title: assignmentReferenceLinks.title,
+      url: assignmentReferenceLinks.url,
+    })
+    .from(assignmentReferenceLinks)
+    .where(
+      and(
+        eq(
+          assignmentReferenceLinks.assignmentId,
+          assignmentId,
         ),
-      );
+        eq(
+          assignmentReferenceLinks.submissionId,
+          submissionId,
+        ),
+        eq(
+          assignmentReferenceLinks.resourceType,
+          "assignment_submission",
+        ),
+      ),
+    );
 
-  // ------------------------------------------------------------
-  // 5. Return response
-  // ------------------------------------------------------------
+  // Return assignment, student, submission, and link details.
   return {
     success: true,
-
     data: {
       assignment: {
         id: assignment.id,
         title: assignment.title,
         assignedAt: assignment.assignedAt,
         maxMarks: Number(assignment.maxMarks),
-        moduleName: assignment.moduleName,
-        lessonName: assignment.lessonName,
+        moduleName: assignment.moduleName ?? null,
+        lessonName: assignment.lessonName ?? null,
       },
 
       submission: {
@@ -1682,12 +1748,11 @@ export async function getAssignmentSubmissionBySubmissionId(
         student: {
           id: submission.studentId,
           fullName: submission.fullName,
-          avatarUrl: submission.avatarUrl,
+          avatarUrl: submission.avatarUrl ?? null,
           rollNumber: submission.rollNumber,
         },
 
         submissionStatus: submission.submissionStatus,
-
         submittedAt: submission.submittedAt,
         gradedAt: submission.gradedAt,
 
@@ -1696,14 +1761,10 @@ export async function getAssignmentSubmissionBySubmissionId(
             ? Number(submission.marksObtained)
             : null,
 
-        teacherFeedback:
-          submission.teacherFeedback,
+        teacherFeedback: submission.teacherFeedback,
+        submissionNote: submission.submissionNote,
 
-        submissionNote:
-          submission.submissionNote,
-
-        submission_reference_links:
-          referenceLinks,
+        submission_reference_links: referenceLinks,
       },
     },
   };

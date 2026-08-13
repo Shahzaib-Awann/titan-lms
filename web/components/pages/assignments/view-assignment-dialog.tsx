@@ -25,7 +25,7 @@ import { formatDate } from "@/lib/helpers/date-fns";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatUnderscoreLabel } from "@/lib/utils";
-import { StudentPortalAssignment } from "../columns";
+import { StudentPortalAssignment } from "../../../app/(pages)/(dashboard)/student/my-courses/[batchId]/assignments/columns";
 
 const InfoItem = ({
   icon: Icon,

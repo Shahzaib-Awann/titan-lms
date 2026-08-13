@@ -67,7 +67,7 @@ const SubmissionFormDialog = ({
 
       const result = await submitAssignment(assignment.assignmentId, values);
 
-      toast.success(result.message);
+      toast.success(result?.message ?? "Assignment submitted successfully");
       router.refresh();
 
       onOpenChange(false);
