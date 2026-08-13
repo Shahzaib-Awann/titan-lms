@@ -64,16 +64,17 @@ export async function getUserForSignin(cnic: string) {
  * - user is not logged in
  * - user role does not match required role
  */
-export async function requireRole(role: Role) {
+export async function requireRole(role: Role | Role[]) {
   const session = await auth();
-
   const user = session?.user;
 
   if (!user?.id) {
     throw new Error("Unauthorized");
   }
 
-  if (user.role !== role) {
+  const roles = Array.isArray(role) ? role : [role];
+
+  if (!roles.includes(user.role)) {
     throw new Error("Forbidden");
   }
 

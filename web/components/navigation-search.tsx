@@ -110,7 +110,7 @@ export default function NavigationCommand({ role }: NavigationSearchProps) {
                     key={item.url}
                     value={`${item.title} ${item.url}`}
                     onSelect={() => navigate(item.url)}
-                    className="gap-3"
+                    className="gap-3 mt-1"
                   >
                     <div className="flex size-10 shrink-0 items-center justify-center rounded-md border border/50-border bg-surface-2/50 text-muted-foreground">
                       {Icon && <Icon className="size-4" />}

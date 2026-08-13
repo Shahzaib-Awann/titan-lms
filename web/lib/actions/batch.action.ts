@@ -8,10 +8,10 @@ import {
   inArray,
   sql,
   or,
-  gte,
   like,
   asc,
   desc,
+  exists,
 } from "drizzle-orm";
 import {
   users,
@@ -24,13 +24,14 @@ import {
   enrollments,
   moduleLessons,
   courseModules,
+  studentProfiles,
 } from "@/lib/db/schema";
 import { BatchFormSchema } from "@/lib/zod/admin.schema";
-import { requireRole, requireTrainer } from "./auth.action";
+import { requireRole } from "./auth.action";
 import z from "zod";
 import { nanoid } from "nanoid";
 import { revalidatePath } from "next/cache";
-import { BatchStatus, LessonStatus } from "@/types/common";
+import { BatchStatus, LessonStatus, ModuleStatus, Role } from "@/types/common";
 
 /**
  * Fetches active trainers for selection options.
@@ -421,25 +422,27 @@ export async function deleteCourseBatch(id: string) {
 }
 
 /**
- * Fetches active batches for a trainer.
- *
- * @param options - Optional search and sort filters.
- * @returns Active batch data with schedules, students, syllabus, and progress details.
- */
-export async function getTrainerActiveBatches(options?: {
+* Fetches assigned batch details for trainer/student batches page
+*
+* @param options - Optional search and batch name sorting options.
+* @returns Assigned batches with course info, schedules, syllabus counts,
+* progress, and student counts for trainers.
+*/
+export async function getAssignedBatches(options?: {
   search?: string;
   sort?: "asc" | "desc";
 }) {
+  // Get search and sort options, with ascending sort as the default.
   const { search, sort = "asc" } = options ?? {};
 
   try {
-    // Get authenticated trainer
-    const { trainer } = await requireTrainer();
+    // Authorize user
+    const user = await requireRole(["trainer", "student"]);
 
-    const today = new Date();
+    // Trim search term
     const searchTerm = search?.trim();
 
-    // Build search condition once
+    // Build search condition for courses and batches
     const searchCondition = searchTerm
       ? or(
           like(courseBatches.batchName, `%${searchTerm}%`),
@@ -448,9 +451,50 @@ export async function getTrainerActiveBatches(options?: {
         )
       : undefined;
 
-    // Execute all database operations in one transaction
+    // Run all database operations inside one transaction.
     const result = await db.transaction(async (tx) => {
-      // Fetch active batches
+      // Check if the logged-in trainer owns the batch.
+      const trainerAccessCondition = exists(
+        tx
+          .select({ id: trainerProfiles.id })
+          .from(trainerProfiles)
+          .where(
+            and(
+              eq(trainerProfiles.id, courseBatches.trainerId),
+              eq(trainerProfiles.userId, user.id),
+              isNull(trainerProfiles.deletedAt),
+            ),
+          ),
+      );
+
+      // Check if the logged-in student is enrolled in the batch.
+      const studentAccessCondition = exists(
+        tx
+          .select({ id: enrollments.id })
+          .from(enrollments)
+          .innerJoin(
+            studentProfiles,
+            and(
+              eq(enrollments.studentId, studentProfiles.id),
+              eq(studentProfiles.userId, user.id),
+              isNull(studentProfiles.deletedAt),
+            ),
+          )
+          .where(
+            and(
+              eq(enrollments.batchId, courseBatches.id),
+              isNull(enrollments.deletedAt),
+            ),
+          ),
+      );
+
+      // Use the correct access rule depending on the user's role.
+      const accessCondition =
+        user.role === "trainer"
+          ? trainerAccessCondition
+          : studentAccessCondition;
+
+      // Fetch all batches accessible to the current user.
       const batches = await tx
         .select({
           batchId: courseBatches.id,
@@ -465,15 +509,17 @@ export async function getTrainerActiveBatches(options?: {
           endDate: courseBatches.endDate,
         })
         .from(courseBatches)
-        .innerJoin(courses, eq(courseBatches.courseId, courses.id))
+        .innerJoin(
+          courses,
+          and(
+            eq(courseBatches.courseId, courses.id),
+            isNull(courses.deletedAt),
+          ),
+        )
         .where(
           and(
-            eq(courseBatches.trainerId, trainer.id),
             isNull(courseBatches.deletedAt),
-            or(
-              gte(courseBatches.endDate, today),
-              isNull(courseBatches.endDate),
-            ),
+            accessCondition,
             searchCondition,
           ),
         )
@@ -483,149 +529,184 @@ export async function getTrainerActiveBatches(options?: {
             : desc(courseBatches.batchName),
         );
 
-      if (!batches.length) {
+      // Return empty result sets when no batches were found.
+      if (batches.length === 0) {
         return {
           batches: [],
           schedules: [],
           syllabusCounts: [],
-          studentCounts: [],
           completedLessons: [],
+          studentCounts: [],
         };
       }
 
-      const batchIds = [...new Set(batches.map((b) => b.batchId))];
-      const courseIds = [...new Set(batches.map((b) => b.courseId))];
+      // Collect all batch IDs for the related queries.
+      const batchIds = batches.map((batch) => batch.batchId);
 
-      // Fetch related data in parallel
-      const [schedules, syllabusCounts, studentCounts, completedLessons] =
-        await Promise.all([
-          tx
-            .select()
-            .from(batchSchedules)
-            .where(inArray(batchSchedules.batchId, batchIds)),
+      // Collect unique course IDs for the syllabus query.
+      const courseIds = [...new Set(batches.map((batch) => batch.courseId))];
 
-          tx
-            .select({
-              courseId: courses.id,
-              moduleCount: sql<number>`
-              COUNT(DISTINCT ${courseModules.id})
-            `,
-              lessonCount: sql<number>`
-              COUNT(DISTINCT ${moduleLessons.id})
-            `,
-            })
-            .from(courses)
-            .leftJoin(courseModules, eq(courseModules.courseId, courses.id))
-            .leftJoin(
-              moduleLessons,
-              eq(moduleLessons.moduleId, courseModules.id),
-            )
-            .where(inArray(courses.id, courseIds))
-            .groupBy(courses.id),
+      // Prepare a query to fetch all batch schedules.
+      const schedulesPromise = tx
+        .select()
+        .from(batchSchedules)
+        .where(inArray(batchSchedules.batchId, batchIds));
 
-          tx
-            .select({
-              batchId: enrollments.batchId,
-              studentCount: sql<number>`
-              COUNT(DISTINCT ${enrollments.studentId})
-            `,
-            })
-            .from(enrollments)
-            .where(
-              and(
-                inArray(enrollments.batchId, batchIds),
-                eq(enrollments.status, "active"),
-                isNull(enrollments.deletedAt),
-              ),
-            )
-            .groupBy(enrollments.batchId),
+      // Prepare a query to count modules and lessons per course.
+      const syllabusPromise = tx
+        .select({
+          courseId: courses.id,
+          moduleCount: sql<number>`COUNT(DISTINCT ${courseModules.id})`,
+          lessonCount: sql<number>`COUNT(DISTINCT ${moduleLessons.id})`,
+        })
+        .from(courses)
+        .leftJoin(
+          courseModules,
+          eq(courseModules.courseId, courses.id),
+        )
+        .leftJoin(
+          moduleLessons,
+          eq(moduleLessons.moduleId, courseModules.id),
+        )
+        .where(
+          and(
+            inArray(courses.id, courseIds),
+            isNull(courses.deletedAt),
+          ),
+        )
+        .groupBy(courses.id);
 
-          tx
-            .select({
-              batchId: moduleProgress.batchId,
-              completed: sql<number>`
-              COUNT(DISTINCT ${moduleProgress.lessonId})
-            `,
-            })
-            .from(moduleProgress)
-            .where(
-              and(
-                inArray(moduleProgress.batchId, batchIds),
-                eq(moduleProgress.status, "completed"),
-              ),
-            )
-            .groupBy(moduleProgress.batchId),
-        ]);
+      // Prepare a query to count completed lessons per batch.
+      const completedLessonsPromise = tx
+        .select({
+          batchId: moduleProgress.batchId,
 
+          completed: sql<number>`
+            COUNT(DISTINCT ${moduleProgress.lessonId})
+          `,
+        })
+        .from(moduleProgress)
+        .where(
+          and(
+            inArray(moduleProgress.batchId, batchIds),
+            eq(moduleProgress.status, "completed"),
+          ),
+        )
+        .groupBy(moduleProgress.batchId);
+
+      // Count active students only for trainers.
+      const studentCountsPromise: Promise<
+        Array<{
+          batchId: string;
+          studentCount: number;
+        }>
+      > =
+        user.role === "trainer"
+          ? tx
+              .select({
+                batchId: enrollments.batchId,
+
+                studentCount: sql<number>`
+                  COUNT(DISTINCT ${enrollments.studentId})
+                `,
+              })
+              .from(enrollments)
+              .where(
+                and(
+                  inArray(enrollments.batchId, batchIds),
+                  eq(enrollments.status, "active"),
+                  isNull(enrollments.deletedAt),
+                ),
+              )
+              .groupBy(enrollments.batchId)
+          : Promise.resolve([]);
+
+      // Run all independent queries at the same time.
+      const [
+        schedules,
+        syllabusCounts,
+        completedLessons,
+        studentCounts,
+      ] = await Promise.all([
+        schedulesPromise,
+        syllabusPromise,
+        completedLessonsPromise,
+        studentCountsPromise,
+      ]);
+
+      // Return all collected database results.
       return {
         batches,
         schedules,
         syllabusCounts,
-        studentCounts,
         completedLessons,
+        studentCounts,
       };
     });
 
-    const {
-      batches,
-      schedules,
-      syllabusCounts,
-      studentCounts,
-      completedLessons,
-    } = result;
-
-    // No active batches
-    if (!batches.length) {
+    // Return an empty successful response when no batches exist.
+    if (result.batches.length === 0) {
       return {
         success: true,
-        message: "No active batches",
+        message: "No batches found.",
         data: [],
       };
     }
 
-    // Schedule lookup
-    const scheduleMap = new Map<string, typeof schedules>();
+    // Create a map to quickly find schedules by batch ID.
+    const scheduleMap = new Map<string, typeof result.schedules>();
 
-    for (const schedule of schedules) {
-      const existing = scheduleMap.get(schedule.batchId);
+    // Group every schedule under its batch.
+    for (const schedule of result.schedules) {
+      const schedules = scheduleMap.get(schedule.batchId);
 
-      if (existing) {
-        existing.push(schedule);
+      // Add to the existing schedule list.
+      if (schedules) {
+        schedules.push(schedule);
       } else {
+        // Create a new schedule list for this batch.
         scheduleMap.set(schedule.batchId, [schedule]);
       }
     }
 
-    // Syllabus lookup
+    // Create a map for quick course syllabus lookup.
     const syllabusMap = new Map(
-      syllabusCounts.map((item) => [
+      result.syllabusCounts.map((item) => [
         item.courseId,
         {
-          moduleCount: Number(item.moduleCount),
-          lessonCount: Number(item.lessonCount),
+          moduleCount: item.moduleCount,
+          lessonCount: item.lessonCount,
         },
       ]),
     );
 
-    // Student lookup
-    const studentMap = new Map(
-      studentCounts.map((item) => [item.batchId, Number(item.studentCount)]),
-    );
-
-    // Progress lookup
+    // Create a map for quick completed-lesson lookup.
     const progressMap = new Map(
-      completedLessons.map((item) => [item.batchId, Number(item.completed)]),
+      result.completedLessons.map((item) => [
+        item.batchId,
+        item.completed,
+      ]),
     );
 
-    // Build response
-    const data = batches.map((batch) => {
-      const syllabus = syllabusMap.get(batch.courseId) ?? {
-        moduleCount: 0,
-        lessonCount: 0,
-      };
+    // Create a map for quick student-count lookup.
+    const studentMap = new Map(
+      result.studentCounts.map((item) => [
+        item.batchId,
+        item.studentCount,
+      ]),
+    );
 
-      const completed = progressMap.get(batch.batchId) ?? 0;
+    // Build the final response object for every batch.
+    const data = result.batches.map((batch) => {
+      const syllabus = syllabusMap.get(batch.courseId) ?? { moduleCount: 0, lessonCount: 0 };
 
+      const completedLessons = Math.max(0, progressMap.get(batch.batchId) ?? 0);
+      const lessonCount = Math.max(0, syllabus.lessonCount);
+
+      const progressPercentage =
+        lessonCount > 0 ? Math.min(100, Math.max(0, Math.round((completedLessons / lessonCount) * 100))) : 0;
+
+      // Return the final batch information.
       return {
         batchId: batch.batchId,
         batchName: batch.batchName,
@@ -639,47 +720,87 @@ export async function getTrainerActiveBatches(options?: {
         endDate: batch.endDate,
 
         moduleCount: syllabus.moduleCount,
-        lessonCount: syllabus.lessonCount,
+        lessonCount,
 
-        studentCount: studentMap.get(batch.batchId) ?? 0,
-
-        progressPercentage:
-          syllabus.lessonCount === 0
-            ? 0
-            : Math.round((completed / syllabus.lessonCount) * 100),
+        progressPercentage,
 
         schedule: scheduleMap.get(batch.batchId) ?? [],
+
+        studentCount:
+          user.role === "trainer"
+            ? (studentMap.get(batch.batchId) ?? 0)
+            : undefined,
       };
     });
 
     return {
       success: true,
-      message: "Trainer active batches fetched successfully",
+      message: "Dashboard batches fetched successfully.",
       data,
     };
   } catch (error) {
-    console.error("getTrainerActiveBatches:", error);
+    console.error("getAssignedBatches failed:", error);
 
     return {
       success: false,
-      message: "Failed to fetch trainer batches",
-      error: error instanceof Error ? error.message : "Unknown error",
+      message: "Failed to fetch dashboard batches.",
+      data: [],
     };
   }
 }
 
+
 /**
- * Fetches batch summary details for the trainer layout.
+ * Fetches batch summary details for the trainer/student batch layout.
  *
  * @param batchId - ID of the batch to fetch.
  * @returns Batch details including course info, dates, and schedule.
  */
-export async function getTrainerBatchSummeryForLayout(batchId: string) {
+export async function getBatchSummaryForBatchesLayout(
+  batchId: string,
+) {
   try {
-    // Get authenticated trainer user
-    const user = await requireRole("trainer");
+    // Authorize user.
+    const user = await requireRole(["trainer", "student"]);
 
-    // Fetch trainer's batch with schedule
+    // Build access condition based on user role.
+    const accessCondition =
+      user.role === "trainer"
+        ? exists(
+            // Check if the trainer is assigned to this batch.
+            db
+              .select({ id: trainerProfiles.id })
+              .from(trainerProfiles)
+              .where(
+                and(
+                  eq(trainerProfiles.id, courseBatches.trainerId),
+                  eq(trainerProfiles.userId, user.id),
+                  isNull(trainerProfiles.deletedAt),
+                ),
+              ),
+          )
+        : exists(
+            // Check if the student is enrolled in this batch.
+            db
+              .select({ id: enrollments.id })
+              .from(enrollments)
+              .innerJoin(
+                studentProfiles,
+                and(
+                  eq(enrollments.studentId, studentProfiles.id),
+                  eq(studentProfiles.userId, user.id),
+                  isNull(studentProfiles.deletedAt),
+                ),
+              )
+              .where(
+                and(
+                  eq(enrollments.batchId, courseBatches.id),
+                  isNull(enrollments.deletedAt),
+                ),
+              ),
+          );
+
+    // Fetch the batch, course, and schedule information.
     const rows = await db
       .select({
         batchId: courseBatches.id,
@@ -691,30 +812,30 @@ export async function getTrainerBatchSummeryForLayout(batchId: string) {
         startDate: courseBatches.startDate,
         endDate: courseBatches.endDate,
 
-        scheduleId: batchSchedules.id,
         weekday: batchSchedules.weekday,
       })
       .from(courseBatches)
       .innerJoin(
-        trainerProfiles,
+        courses,
         and(
-          eq(courseBatches.trainerId, trainerProfiles.id),
-          eq(trainerProfiles.userId, user.id),
-          isNull(trainerProfiles.deletedAt),
+          eq(courseBatches.courseId, courses.id),
+          isNull(courses.deletedAt),
         ),
       )
-      .innerJoin(courses, eq(courseBatches.courseId, courses.id))
-      .leftJoin(batchSchedules, eq(batchSchedules.batchId, courseBatches.id))
+      .leftJoin(
+        batchSchedules,
+        eq(batchSchedules.batchId, courseBatches.id),
+      )
       .where(
         and(
           eq(courseBatches.id, batchId),
           isNull(courseBatches.deletedAt),
-          isNull(courses.deletedAt),
+          accessCondition,
         ),
       );
 
-    // Batch not found or doesn't belong to trainer
-    if (!rows.length) {
+    // Return "not found" if no matching batch exists.
+    if (rows.length === 0) {
       return {
         success: false,
         status: "not_found" as const,
@@ -724,21 +845,20 @@ export async function getTrainerBatchSummeryForLayout(batchId: string) {
 
     const first = rows[0];
 
-    // Unique weekdays
+    // Extract unique weekdays from the results.
     const schedule = [
       ...new Set(
-        rows
-          .map((row) => row.weekday)
-          .filter(
-            (day): day is NonNullable<typeof day> =>
-              day !== null && day !== undefined,
+        rows.map((row) => row.weekday).filter((day): day is NonNullable<typeof day> =>
+            day !== null && day !== undefined,
           ),
       ),
     ];
 
+    // Return the batch summary..
     return {
       success: true,
       status: "success" as const,
+
       data: {
         batchId: first.batchId,
         batchName: first.batchName,
@@ -753,7 +873,7 @@ export async function getTrainerBatchSummeryForLayout(batchId: string) {
       },
     };
   } catch (error) {
-    console.error("getTrainerBatchSummeryForLayout:", error);
+    console.error("getBatchSummaryForBatchesLayout failed:", error);
 
     return {
       success: false,
@@ -763,53 +883,15 @@ export async function getTrainerBatchSummeryForLayout(batchId: string) {
   }
 }
 
+
 /**
- * Fetches lesson progress summary for a trainer's batch.
+ * Fetches lesson progress summary for trainer's and student's /progress page.
  *
  * @param batchId - ID of the batch to fetch summary for.
  * @returns Lesson counts and progress details for the batch.
  */
-export async function getTrainerBatchLessonSummary(batchId: string) {
+export async function getBatchLessonProgressSummary(batchId: string) {
   try {
-    // --------------------------------------------------
-    // 1. Logged in user
-    // --------------------------------------------------
-
-    const { trainer } = await requireTrainer();
-
-    // --------------------------------------------------
-    // 3. Verify Batch Ownership + Course
-    // --------------------------------------------------
-
-    const [batch] = await db
-      .select({
-        batchId: courseBatches.id,
-        courseId: courses.id,
-      })
-      .from(courseBatches)
-      .innerJoin(courses, eq(courseBatches.courseId, courses.id))
-      .where(
-        and(
-          eq(courseBatches.id, batchId),
-          eq(courseBatches.trainerId, trainer.id),
-          isNull(courseBatches.deletedAt),
-          isNull(courses.deletedAt),
-        ),
-      )
-      .limit(1);
-
-    if (!batch) {
-      return {
-        success: false,
-        status: "not_found" as const,
-        message: "Batch not found",
-      };
-    }
-
-    // --------------------------------------------------
-    // 4. Fetch lesson + progress summary
-    // --------------------------------------------------
-
     const [summary] = await db
       .select({
         totalLessonsCount: sql<number>`
@@ -817,69 +899,106 @@ export async function getTrainerBatchLessonSummary(batchId: string) {
         `,
 
         completedLessonCount: sql<number>`
-          SUM(
-            CASE
-              WHEN ${moduleProgress.status} = 'completed'
-              THEN 1
-              ELSE 0
-            END
+          COALESCE(
+            SUM(
+              CASE
+                WHEN ${moduleProgress.status} = 'completed'
+                THEN 1
+                ELSE 0
+              END
+            ),
+            0
           )
         `,
 
         activeLessonCount: sql<number>`
-          SUM(
-            CASE
-              WHEN ${moduleProgress.status} = 'in_progress'
-              THEN 1
-              ELSE 0
-            END
+          COALESCE(
+            SUM(
+              CASE
+                WHEN ${moduleProgress.status} = 'in_progress'
+                THEN 1
+                ELSE 0
+              END
+            ),
+            0
           )
         `,
 
         skippedLessonCount: sql<number>`
-          SUM(
-            CASE
-              WHEN ${moduleProgress.status} = 'skipped'
-              THEN 1
-              ELSE 0
-            END
+          COALESCE(
+            SUM(
+              CASE
+                WHEN ${moduleProgress.status} = 'skipped'
+                THEN 1
+                ELSE 0
+              END
+            ),
+            0
           )
         `,
 
         notStartedLessonCount: sql<number>`
-          SUM(
-            CASE
-              WHEN ${moduleProgress.id} IS NULL
-              OR ${moduleProgress.status} = 'not_started'
-              THEN 1
-              ELSE 0
-            END
+          COALESCE(
+            SUM(
+              CASE
+                WHEN ${moduleProgress.id} IS NULL
+                  OR ${moduleProgress.status} = 'not_started'
+                THEN 1
+                ELSE 0
+              END
+            ),
+            0
           )
         `,
       })
-      .from(courseModules)
-      .innerJoin(moduleLessons, eq(moduleLessons.moduleId, courseModules.id))
+      .from(courseBatches)
+      .innerJoin(
+        courses,
+        and(
+          eq(courses.id, courseBatches.courseId),
+          isNull(courses.deletedAt),
+        ),
+      )
+      .leftJoin(
+        courseModules,
+        eq(courseModules.courseId, courses.id),
+      )
+      .leftJoin(
+        moduleLessons,
+        eq(moduleLessons.moduleId, courseModules.id),
+      )
       .leftJoin(
         moduleProgress,
         and(
+          eq(moduleProgress.batchId, courseBatches.id),
           eq(moduleProgress.lessonId, moduleLessons.id),
-          eq(moduleProgress.batchId, batchId),
         ),
       )
-      .where(eq(courseModules.courseId, batch.courseId));
+      .where(
+        and(
+          eq(courseBatches.id, batchId),
+          isNull(courseBatches.deletedAt),
+        ),
+      )
+      .groupBy(courseBatches.id)
+      .limit(1);
 
-    const totalLessons = Number(summary?.totalLessonsCount ?? 0);
+    // Batch doesn't exist.
+    if (!summary) {
+      return {
+        success: false,
+        status: "not_found" as const,
+        message: "Batch not found",
+      };
+    }
 
-    const completedLessons = Number(summary?.completedLessonCount ?? 0);
+    const totalLessons = Number(summary.totalLessonsCount);
+    const completedLessons = Number(summary.completedLessonCount);
 
     const progressPercentage =
-      totalLessons === 0
-        ? 0
-        : Math.round((completedLessons / totalLessons) * 100);
-
-    // --------------------------------------------------
-    // 5. Response
-    // --------------------------------------------------
+      totalLessons > 0
+        ? Math.round((completedLessons / totalLessons) * 100)
+        : 0;
 
     return {
       success: true,
@@ -887,106 +1006,87 @@ export async function getTrainerBatchLessonSummary(batchId: string) {
 
       data: {
         totalLessonsCount: totalLessons,
-
         completedLessonCount: completedLessons,
-
-        activeLessonCount: Number(summary?.activeLessonCount ?? 0),
-
-        skippedLessonCount: Number(summary?.skippedLessonCount ?? 0),
-
-        notStartedLessonCount: Number(summary?.notStartedLessonCount ?? 0),
-
+        activeLessonCount: Number(summary.activeLessonCount),
+        skippedLessonCount: Number(summary.skippedLessonCount),
+        notStartedLessonCount: Number(summary.notStartedLessonCount),
         progressPercentage,
       },
     };
   } catch (error) {
-    console.error("getTrainerBatchLessonSummary error:", error);
+    console.error("getBatchLessonProgressSummary error:", error);
 
     return {
       success: false,
       status: "error" as const,
-      message: "Failed to get batch lesson summary",
+      message: "Failed to get batch lesson progress summary",
       error: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }
 
 /**
- * Fetches curriculum roadmap and lesson progress for a trainer's batch.
+ * Fetches curriculum roadmap and lesson progress for a trainer or student in a batch.
  *
  * @param batchId - ID of the batch to fetch roadmap for.
+ * @param role - Role requesting the batch roadmap.
  * @returns Modules with lessons, progress status, and completion details.
  */
-export async function getTrainerBatchCurriculumRoadmap(batchId: string) {
+export async function getBatchCurriculumProgressRoadmap(
+  batchId: string,
+  role: Role,
+) {
   try {
-    // Get authenticated trainer
-    const user = await requireRole("trainer");
+    const canUpdateLessonStatus = role === "trainer";
 
-    const rows = await db.transaction(async (tx) => {
-      // Verify ownership and get course
-      const [batch] = await tx
-        .select({
-          courseId: courseBatches.courseId,
-        })
-        .from(courseBatches)
-        .innerJoin(
-          trainerProfiles,
-          and(
-            eq(courseBatches.trainerId, trainerProfiles.id),
-            eq(trainerProfiles.userId, user.id),
-            isNull(trainerProfiles.deletedAt),
-          ),
-        )
-        .where(
-          and(eq(courseBatches.id, batchId), isNull(courseBatches.deletedAt)),
-        )
-        .limit(1);
+    const rows = await db
+      .select({
+        batchId: courseBatches.id,
 
-      if (!batch) {
-        return null;
-      }
+        moduleId: courseModules.id,
+        moduleTitle: courseModules.title,
+        moduleDescription: courseModules.description,
+        moduleOrderIndex: courseModules.orderIndex,
 
-      // Fetch curriculum with lesson progress
-      return tx
-        .select({
-          moduleId: courseModules.id,
-          moduleTitle: courseModules.title,
-          moduleDescription: courseModules.description,
-          moduleOrderIndex: courseModules.orderIndex,
+        lessonId: moduleLessons.id,
+        lessonTitle: moduleLessons.title,
+        lessonDescription: moduleLessons.description,
+        lessonOrderIndex: moduleLessons.orderIndex,
 
-          lessonId: moduleLessons.id,
-          lessonTitle: moduleLessons.title,
-          lessonDescription: moduleLessons.description,
-          lessonOrderIndex: moduleLessons.orderIndex,
+        progressStatus: moduleProgress.status,
+      })
+      .from(courseBatches)
+      .leftJoin(
+        courseModules,
+        eq(courseModules.courseId, courseBatches.courseId),
+      )
+      .leftJoin(
+        moduleLessons,
+        eq(moduleLessons.moduleId, courseModules.id),
+      )
+      .leftJoin(
+        moduleProgress,
+        and(
+          eq(moduleProgress.lessonId, moduleLessons.id),
+          eq(moduleProgress.batchId, courseBatches.id),
+        ),
+      )
+      .where(
+        and(
+          eq(courseBatches.id, batchId),
+          isNull(courseBatches.deletedAt),
+        ),
+      )
+      .orderBy(
+        asc(courseModules.orderIndex),
+        asc(moduleLessons.orderIndex),
+      );
 
-          progressStatus: moduleProgress.status,
-        })
-        .from(courseModules)
-        .innerJoin(moduleLessons, eq(moduleLessons.moduleId, courseModules.id))
-        .leftJoin(
-          moduleProgress,
-          and(
-            eq(moduleProgress.lessonId, moduleLessons.id),
-            eq(moduleProgress.batchId, batchId),
-          ),
-        )
-        .where(eq(courseModules.courseId, batch.courseId))
-        .orderBy(asc(courseModules.orderIndex), asc(moduleLessons.orderIndex));
-    });
-
-    // Batch not found or doesn't belong to trainer
-    if (!rows) {
+    // Batch doesn't exist.
+    if (!rows.length) {
       return {
         success: false,
         message: "Batch not found",
-        data: [],
-      };
-    }
-
-    if (!rows.length) {
-      return {
-        success: true,
-        message: "No curriculum found",
         data: [],
       };
     }
@@ -997,89 +1097,121 @@ export async function getTrainerBatchCurriculumRoadmap(batchId: string) {
       description: string | null;
       orderIndex: number;
       progressStatus: LessonStatus;
+      canUpdateLessonStatus: boolean;
     };
 
-    const moduleMap = new Map<
-      string,
-      {
-        id: string;
-        title: string;
-        description: string | null;
-        orderIndex: number;
-        lessons: Lesson[];
-      }
-    >();
+    type ModuleData = {
+      id: string;
+      title: string;
+      description: string | null;
+      orderIndex: number;
 
-    // Group lessons by module
+      totalLessonsCount: number;
+      completedLessonsCount: number;
+      activeLessonsCount: number;
+
+      lessons: Lesson[];
+    };
+
+    const moduleMap = new Map<string, ModuleData>();
+
     for (const row of rows) {
-      let courseModule = moduleMap.get(row.moduleId);
+      // Batch exists but has no curriculum.
+      if (!row.moduleId || !row.lessonId) {
+        continue;
+      }
 
-      if (!courseModule) {
-        courseModule = {
+      let moduleData = moduleMap.get(row.moduleId);
+
+      if (!moduleData) {
+        moduleData = {
           id: row.moduleId,
-          title: row.moduleTitle,
+          title: row.moduleTitle!,
           description: row.moduleDescription,
-          orderIndex: row.moduleOrderIndex,
+
+          // DB value is nullable according to Drizzle's inferred type.
+          orderIndex: row.moduleOrderIndex ?? 0,
+
+          totalLessonsCount: 0,
+          completedLessonsCount: 0,
+          activeLessonsCount: 0,
+
           lessons: [],
         };
 
-        moduleMap.set(row.moduleId, courseModule);
+        moduleMap.set(row.moduleId, moduleData);
       }
 
-      courseModule.lessons.push({
+      const progressStatus: LessonStatus =
+        row.progressStatus ?? "not_started";
+
+      moduleData.totalLessonsCount++;
+
+      switch (progressStatus) {
+        case "completed":
+          moduleData.completedLessonsCount++;
+          moduleData.activeLessonsCount++;
+          break;
+
+        case "in_progress":
+        case "skipped":
+          moduleData.activeLessonsCount++;
+          break;
+      }
+
+      moduleData.lessons.push({
         id: row.lessonId,
-        title: row.lessonTitle,
+        title: row.lessonTitle!,
         description: row.lessonDescription,
-        orderIndex: row.lessonOrderIndex,
-        progressStatus: row.progressStatus ?? "not_started",
+        orderIndex: row.lessonOrderIndex ?? 0,
+        progressStatus,
+        canUpdateLessonStatus,
       });
     }
 
-    // Build response
-    const data = Array.from(moduleMap.values()).map((courseModule) => {
-      let completedLessons = 0;
-      let activeLessons = 0;
+    if (moduleMap.size === 0) {
+      return {
+        success: true,
+        message: "No curriculum found",
+        data: [],
+      };
+    }
 
-      for (const lesson of courseModule.lessons) {
-        if (lesson.progressStatus === "completed") {
-          completedLessons++;
-          activeLessons++;
-        } else if (
-          lesson.progressStatus === "in_progress" ||
-          lesson.progressStatus === "skipped"
-        ) {
-          activeLessons++;
-        }
-      }
+    const data = Array.from(moduleMap.values()).map((moduleData) => {
+      const {
+        totalLessonsCount,
+        completedLessonsCount,
+        activeLessonsCount,
+      } = moduleData;
 
-      const totalLessons = courseModule.lessons.length;
+      const moduleProgressPercentage =
+        totalLessonsCount > 0
+          ? Math.round(
+              (completedLessonsCount / totalLessonsCount) * 100,
+            )
+          : 0;
 
-      const progressPercentage =
-        totalLessons === 0
-          ? 0
-          : Math.round((completedLessons / totalLessons) * 100);
+      let status: ModuleStatus;
 
-      let status: "completed" | "in_progress" | "not_started";
-
-      if (completedLessons === totalLessons) {
+      if (completedLessonsCount === totalLessonsCount) {
         status = "completed";
-      } else if (activeLessons > 0) {
+      } else if (activeLessonsCount > 0) {
         status = "in_progress";
       } else {
         status = "not_started";
       }
 
       return {
-        id: courseModule.id,
-        title: courseModule.title,
-        description: courseModule.description,
-        orderIndex: courseModule.orderIndex,
+        id: moduleData.id,
+        title: moduleData.title,
+        description: moduleData.description,
+        orderIndex: moduleData.orderIndex,
 
         status,
-        moduleProgressPercentage: progressPercentage,
-        totalLessonsCount: totalLessons,
+        moduleProgressPercentage,
 
-        lessons: courseModule.lessons,
+        totalLessonsCount,
+        lessons: moduleData.lessons,
       };
     });
 
@@ -1089,7 +1221,7 @@ export async function getTrainerBatchCurriculumRoadmap(batchId: string) {
       data,
     };
   } catch (error) {
-    console.error("getTrainerBatchCurriculumRoadmap:", error);
+    console.error("getBatchCurriculumProgressRoadmap:", error);
 
     return {
       success: false,
@@ -1116,12 +1248,12 @@ export async function updateTrainerLessonProgress(payload: {
     const { moduleId, lessonId, action, batchId } = payload;
 
     // Validate allowed lesson statuses
-    const allowedStatuses = [
+    const allowedStatuses: LessonStatus[] = [
       "not_started",
       "in_progress",
       "completed",
       "skipped",
-    ] as const;
+    ];
 
     if (!allowedStatuses.includes(action)) {
       throw new Error("Invalid lesson progress status");
@@ -1206,6 +1338,7 @@ export async function updateTrainerLessonProgress(payload: {
     }
 
     revalidatePath(`/trainer/batches/${batchId}/progress`);
+    revalidatePath(`/student/my-courses/${batchId}/progress`);
 
     return {
       success: true,

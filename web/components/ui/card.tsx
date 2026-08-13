@@ -21,7 +21,7 @@ function Card({
           "rounded-lg",
           "bg-card text-card-foreground",
           "border border-border",
-          "shadow-card",
+          "shadow-sm",
           "transition-all duration-250 ease-in-out",
 
           // spacing

@@ -141,6 +141,55 @@
       "when": 1786008210407,
       "tag": "0019_shallow_bill_hollister",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "5",
+      "when": 1786344646869,
+      "tag": "0020_petite_oracle",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "5",
+      "when": 1786344817386,
+      "tag": "0021_pale_triathlon",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "5",
+      "when": 1786345531181,
+      "tag": "0022_faulty_radioactive_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "5",
+      "when": 1786352269027,
+      "tag": "0023_nostalgic_eternals",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "5",
+      "when": 1786614066482,
+      "tag": "0024_far_the_enforcers",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "5",
+      "when": 1786615264983,
+      "tag": "0025_volatile_lady_bullseye",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "5",
+      "when": 1786615317692,
+      "tag": "0026_large_sauron",
+      "breakpoints": true
     }
   ]
 }

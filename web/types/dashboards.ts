@@ -1,4 +1,6 @@
-export interface BatchSchedule {
+import { BatchStatus } from "./common";
+
+export interface DashboardBatchSchedule {
   id: string;
   weekday: string;
   startTime: string;
@@ -6,19 +8,18 @@ export interface BatchSchedule {
   room: string | null;
 }
 
-export interface TrainerBatch {
+export interface DashboardBatch {
   batchId: string;
   courseName: string;
   batchName: string;
   duration: number;
   startDate: Date;
   endDate: Date | null;
-  status: "scheduled" | "live";
-  schedule: BatchSchedule[];
+  schedule: DashboardBatchSchedule[];
 }
 
-export interface TrainerBatchesResponse {
+export interface DashboardBatchesResponse {
   success: boolean;
   message?: string;
-  data: TrainerBatch[];
+  data: DashboardBatch[];
 }

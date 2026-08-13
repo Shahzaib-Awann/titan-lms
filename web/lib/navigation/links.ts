@@ -3,19 +3,14 @@ import {
   LayoutDashboard,
   Users,
   BookOpen,
-  FileText,
   FolderOpen,
   Calendar,
   Bell,
   BarChart3,
   Settings,
   UserCog,
-  MessageSquare,
   Award,
-  HelpCircle,
-  PenSquare,
   Clock,
-  Bookmark,
   UserPlus,
   Layers,
   ClipboardCheck,
@@ -208,65 +203,8 @@ export const studentNav: NavItem[] = [
   },
   {
     title: "My Courses",
-    url: "/student/courses",
+    url: "/student/my-courses",
     icon: BookOpen,
-    children: [
-      {
-        title: "Enrolled Courses",
-        url: "/student/courses",
-      },
-      {
-        title: "Completed Courses",
-        url: "/student/courses/completed",
-      },
-      {
-        title: "Bookmarks",
-        url: "/student/courses/bookmarks",
-      },
-    ],
-  },
-  {
-    title: "Assignments",
-    url: "/student/assignments",
-    icon: FileText,
-    children: [
-      {
-        title: "Pending",
-        url: "/student/assignments/pending",
-      },
-      {
-        title: "Submitted",
-        url: "/student/assignments/submitted",
-      },
-      {
-        title: "Grades",
-        url: "/student/assignments/grades",
-      },
-    ],
-  },
-  {
-    title: "Quizzes",
-    url: "/student/quizzes",
-    icon: PenSquare,
-    children: [
-      {
-        title: "Available Quizzes",
-        url: "/student/quizzes",
-      },
-      {
-        title: "Attempt History",
-        url: "/student/quizzes/history",
-      },
-      {
-        title: "Results",
-        url: "/student/quizzes/results",
-      },
-    ],
-  },
-  {
-    title: "Learning Progress",
-    url: "/student/progress",
-    icon: BarChart3,
   },
   {
     title: "Certificates",
@@ -279,29 +217,14 @@ export const studentNav: NavItem[] = [
     icon: Calendar,
   },
   {
-    title: "Deadlines",
-    url: "/student/deadlines",
-    icon: Clock,
-  },
-  {
     title: "Announcements",
     url: "/student/announcements",
     icon: Bell,
   },
   {
-    title: "Messages",
-    url: "/student/messages",
-    icon: MessageSquare,
-  },
-  {
-    title: "Resources",
-    url: "/student/resources",
-    icon: Bookmark,
-  },
-  {
-    title: "Help & Support",
-    url: "/student/support",
-    icon: HelpCircle,
+    title: "Profile",
+    url: "/student/profile",
+    icon: UserCog,
   },
 ];
 

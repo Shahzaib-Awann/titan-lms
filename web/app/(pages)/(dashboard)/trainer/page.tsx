@@ -2,13 +2,22 @@ import AnnouncementsCalenderCard from "@/components/pages/dashboards/announcemen
 import BatchesCardsGrid from "@/components/pages/dashboards/batches-cards-grid";
 import DashboardStatsGrid from "@/components/pages/dashboards/stats-cards-grid";
 import { MainBanner } from "@/components/ui/main-banner";
-import { getTrainerStats } from "@/lib/actions/dashboard.action";
+import { getCurrentUser } from "@/lib/actions/auth.action";
+import {
+  getDashboardBatches,
+  getTrainerStats,
+} from "@/lib/actions/dashboard.action";
 import { BookOpen, CalendarDays, Clock, Layers3, Users } from "lucide-react";
 import Link from "next/link";
 import React from "react";
 
 const TrainerDashboardPage = async () => {
-  const result = await getTrainerStats();
+  const [user, result, batchesResponse] = await Promise.all([
+    getCurrentUser(),
+    getTrainerStats(),
+    getDashboardBatches(),
+  ]);
+
   const data = result.data;
 
   const stats = [
@@ -49,7 +58,10 @@ const TrainerDashboardPage = async () => {
         <MainBanner>
           <div className="max-w-3xl">
             <h1 className="mb-4 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
-              Welcome Back, Trainer
+              Welcome Back,{" "}
+              <span className="underline underline-offset-8">
+                {`${user?.fullName ?? "Guest"}!`}
+              </span>
             </h1>
 
             <p className="mb-8 max-w-2xl text-lg leading-relaxed text-white/80">
@@ -70,12 +82,20 @@ const TrainerDashboardPage = async () => {
           </div>
         </MainBanner>
 
-        <DashboardStatsGrid success={result.success} cards={stats} />
+        <DashboardStatsGrid
+          success={result.success}
+          cards={stats}
+          className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4"
+        />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 items-start gap-8">
           {/* Main Column - Recent Users */}
           <div className="lg:col-span-3 flex flex-col gap-8">
-            <BatchesCardsGrid />
+            <BatchesCardsGrid
+              success={batchesResponse.success}
+              role={"trainer"}
+              batches={batchesResponse.data}
+            />
           </div>
         </div>
       </div>

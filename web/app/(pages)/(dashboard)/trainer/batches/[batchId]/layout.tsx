@@ -1,8 +1,8 @@
-import TrainerTabNavigation from "@/components/pages/trainer/tab-navigation";
 import { Badge } from "@/components/ui/badge";
 import { notFound } from "next/navigation";
-import { getTrainerBatchSummeryForLayout } from "@/lib/actions/batch.action";
+import { getBatchSummaryForBatchesLayout } from "@/lib/actions/batch.action";
 import { getEntityStatus } from "@/lib/helpers/date-fns";
+import BatchLayoutTabNavigation from "@/components/pages/trainer/tab-navigation";
 
 export default async function BatchesLayout({
   children,
@@ -13,7 +13,7 @@ export default async function BatchesLayout({
 }) {
   const { batchId } = await params;
 
-  const response = await getTrainerBatchSummeryForLayout(batchId);
+  const response = await getBatchSummaryForBatchesLayout(batchId);
 
   if (!response.success) {
     notFound();
@@ -70,7 +70,7 @@ export default async function BatchesLayout({
         </section>
       </header>
 
-      <TrainerTabNavigation batchId={batchId} />
+      <BatchLayoutTabNavigation batchId={batchId} role="trainer" />
 
       <main className="flex flex-1 flex-col gap-4 p-4 pt-0">{children}</main>
     </>

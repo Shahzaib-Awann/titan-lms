@@ -31,3 +31,18 @@ export function getAvatarInitials(name?: string | null): string {
     ? parts[0][0].toUpperCase()
     : `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 }
+
+/**
+ * Formats a value by replacing underscores with spaces.
+ *
+ * Examples:
+ * - "NOT_SUBMITTED" → "NOT SUBMITTED"
+ * - "LATE" → "LATE"
+ * - undefined → "Not submitted"
+ */
+export const formatUnderscoreLabel = (
+  value: string | undefined,
+  defaultValue = "N/A"
+) => {
+  return value?.replace(/_/g, " ") ?? defaultValue;
+};
