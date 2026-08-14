@@ -80,7 +80,7 @@ export const CourseSyllabusStats = ({
           {stats.map((stat) => (
             <div
               key={stat.label}
-              className="flex items-start flex-col p-4 bg-muted border border-border w-full h-full shadow-sm rounded-lg"
+              className="flex items-start flex-col p-4 bg-surface-2 border border-border w-full h-full shadow-sm rounded-lg"
             >
               <p className="font-bold text-xs text-muted-foreground uppercase">
                 {stat.label}

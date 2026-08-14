@@ -12,6 +12,7 @@ import {
   unique,
   boolean,
   foreignKey,
+  json,
 } from "drizzle-orm/mysql-core";
 
 // Enums
@@ -25,6 +26,15 @@ export const announcementAudienceEnum = mysqlEnum("target_audience", ["all", "tr
 export const assignmentStatusEnum = mysqlEnum("assignment_status", ["draft","published","closed"]);
 export const assignmentSubmissionStatusEnum = mysqlEnum("assignment_submission_status", ["not_submitted","submitted","late","graded","resubmitted"]);
 export const assignmentResourceTypeEnum = mysqlEnum("assignment_resource_type", ["assignment","assignment_submission"]);
+export const quizCreationMethodEnum = mysqlEnum("quiz_creation_method", ["manual", "ai"]);
+export const quizStatusEnum = mysqlEnum("quiz_status", ["draft", "published", "closed", "archived"]);
+export const quizQuestionTypeEnum = mysqlEnum("quiz_question_type", ["mcq", "boolean"]);
+export const quizOptionEnum = mysqlEnum("quiz_option", ["a", "b", "c", "d"]);
+export const aiQuizSourceTypeEnum = mysqlEnum("ai_quiz_source_type", ["lesson", "asset"]);
+export const aiQuizGenerationStatusEnum = mysqlEnum("ai_quiz_generation_status", ["pending", "processing", "completed", "failed", "cancelled"]);
+export const aiQuizDifficultyEnum = mysqlEnum("ai_quiz_difficulty", ["easy", "medium", "hard"]);
+export const quizAttemptStatusEnum = mysqlEnum("quiz_attempt_status", ["in_progress", "submitted", "cancelled", "cheated"]);
+
 
 // Users table
 export const users = mysqlTable("users", {
@@ -311,4 +321,152 @@ export const assignmentReferenceLinks = mysqlTable("assignment_reference_links",
       name: "assignment_reference_link_submission_fk",
     }),
   ]
+);
+
+
+// Quizzes
+export const quizzes = mysqlTable("quizzes", {
+  id: varchar("id", { length: 21 }).primaryKey(),
+
+  batchId: varchar("batch_id", { length: 21 }).notNull().references(() => courseBatches.id),
+  createdBy: varchar("created_by", { length: 21 }).notNull().references(() => users.id),
+
+  creationMethod: quizCreationMethodEnum.notNull().default("manual"),
+
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+
+  durationMinutes: int("duration_minutes").notNull(),
+  totalMarks: int("total_marks").notNull().default(0),
+
+  status: quizStatusEnum.notNull().default("draft"),
+
+  publishedDate: date("published_date"),
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+  deletedAt: timestamp("deleted_at"),
+});
+
+// Quiz Questions
+export const quizQuestions = mysqlTable("quiz_questions", {
+  id: varchar("id", { length: 21 }).primaryKey(),
+
+  quizId: varchar("quiz_id", { length: 21 }).notNull().references(() => quizzes.id),
+
+  type: quizQuestionTypeEnum.notNull(),
+
+  question: text("question").notNull(),
+
+  optionA: varchar("option_a", { length: 255 }).notNull(),
+  optionB: varchar("option_b", { length: 255 }).notNull(),
+  optionC: varchar("option_c", { length: 255 }),
+  optionD: varchar("option_d", { length: 255 }),
+
+  correctOption: quizOptionEnum.notNull(),
+  marks: int("marks").notNull().default(1),
+
+  orderIndex: int("order_index").notNull().default(0),
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+
+// Quiz Attempts
+export const quizAttempts = mysqlTable("quiz_attempts", {
+    id: varchar("id", { length: 21 }).primaryKey(),
+
+    quizId: varchar("quiz_id", { length: 21 }).notNull().references(() => quizzes.id),
+    enrollmentId: varchar("enrollment_id", { length: 21 }).notNull().references(() => enrollments.id),
+
+    status: quizAttemptStatusEnum.notNull().default("in_progress"),
+
+    startedAt: timestamp("started_at").notNull(),
+    submittedAt: timestamp("submitted_at"),
+
+    score: int("score"),
+
+    // Set when attempt is cancelled/flagged for cheating
+    cancelledAt: timestamp("cancelled_at"),
+    cancellationReason: text("cancellation_reason"),
+
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => [
+    unique("quiz_enrollment_unique").on(
+      table.quizId,
+      table.enrollmentId,
+    ),
+  ],
+);
+
+
+// Quiz Answers
+export const quizAnswers = mysqlTable(
+  "quiz_answers", {
+    id: varchar("id", { length: 21 }).primaryKey(),
+
+    attemptId: varchar("attempt_id", { length: 21 }).notNull().references(() => quizAttempts.id),
+    questionId: varchar("question_id", { length: 21 }).notNull().references(() => quizQuestions.id),
+
+    selectedOption: quizOptionEnum.notNull(),
+    isCorrect: boolean("is_correct").notNull(),
+
+    marksAwarded: int("marks_awarded").notNull().default(0),
+
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    unique("quiz_attempt_question_unique").on(table.attemptId, table.questionId),
+  ],
+);
+
+
+// AI Quiz Generation Jobs
+export const aiQuizGenerationJobs = mysqlTable("ai_quiz_generation_jobs", {
+    id: varchar("id", { length: 21 }).primaryKey(),
+
+    // Draft quiz being generated
+    quizId: varchar("quiz_id", { length: 21 }).notNull().references(() => quizzes.id),
+
+    // Where AI gets its knowledge from
+    sourceType: aiQuizSourceTypeEnum.notNull(),
+
+    // LMS module used as source
+    // NULL when using PDF/file only
+    sourceModuleId: varchar("source_module_id", { length: 21 }).references(() => courseModules.id),
+
+    // LMS lesson used as source
+    // NULL when using PDF/file only
+    sourceLessonId: varchar("source_lesson_id", { length: 21 }).references(() => moduleLessons.id),
+
+    // Uploaded PDF/file used as source
+    // NULL when using lesson only
+    sourceAssetId: varchar("source_asset_id", { length: 21 }).references(() => assets.id),
+
+    status: aiQuizGenerationStatusEnum.notNull().default("pending"),
+
+    questionCount: int("question_count").notNull(),
+
+    difficulty: aiQuizDifficultyEnum.notNull(),
+
+    // Example:
+    // {
+    //   "mcq": 7,
+    //   "boolean": 3
+    // }
+    questionTypes: json("question_types").notNull(),
+
+    // User-provided instructions for AI
+    customInstructions: text("custom_instructions"),
+
+    errorMessage: text("error_message"),
+
+    startedAt: timestamp("started_at"),
+    completedAt: timestamp("completed_at"),
+
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
 );

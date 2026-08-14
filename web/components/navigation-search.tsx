@@ -86,7 +86,7 @@ export default function NavigationCommand({ role }: NavigationSearchProps) {
       </Button>
 
       <CommandDialog open={open} onOpenChange={setOpen}>
-        <Command className="border-none shadow-none outline-none">
+        <Command className="border-none shadow-none outline-none px-0">
           <CommandInput placeholder="Search pages, courses, settings..." />
 
           <CommandList>
