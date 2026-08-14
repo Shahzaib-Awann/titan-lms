@@ -11,7 +11,7 @@ const AssignmentsPage = async ({
   const assignments = await getTrainerBatchAssignmentsForDataTable(batchId);
 
   return (
-    <div className="container mx-auto py-10">
+    <div className="space-y-5">
       <AssignmentsTable batchId={batchId} data={assignments} />
     </div>
   );

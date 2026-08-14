@@ -8,6 +8,7 @@ import { RowActions } from "./row-actions";
 import { AssignmentStatus } from "@/types/common";
 import { formatDate, getDaysLeft } from "@/lib/helpers/date-fns";
 import { isBefore, isToday } from "date-fns";
+import { Progress } from "@/components/ui/progress";
 
 export interface Assignment {
   id: string;
@@ -145,12 +146,12 @@ export const columns = ({ batchId }: ColumnsProps): ColumnDef<Assignment>[] => [
           : 0;
 
       return (
-        <div className="flex flex-col">
-          <span className="text-sm font-medium">
+        <div className="flex flex-col max-w-35">
+          <span className="text-xs font-medium mb-1 text-right text-muted-foreground">
             {assignment.submissions} / {assignment.enrolledStudents}
           </span>
 
-          <span className="text-muted-foreground text-xs">{percentage}%</span>
+          <Progress value={percentage} variant="green" />
         </div>
       );
     },

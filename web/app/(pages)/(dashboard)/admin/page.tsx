@@ -65,11 +65,9 @@ export default async function AdminDashboard() {
             </h1>
 
             <p className="mb-8 max-w-2xl text-lg leading-relaxed text-white/80">
-              Here&apos;s what&apos;s happening in your learning platform today.
-              You have <span className="font-semibold text-white">24</span>{" "}
-              pending leave approvals and{" "}
-              <span className="font-semibold text-white">112</span> new
-              registrations to review.
+              Here&apos;s an overview of your learning platform. Manage
+              students, registrations, leave requests, and other administrative
+              activities from your dashboard.
             </p>
 
             <div className="flex flex-wrap gap-4">

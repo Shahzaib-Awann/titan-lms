@@ -3,11 +3,8 @@ import {
   LayoutDashboard,
   Users,
   BookOpen,
-  FolderOpen,
   Calendar,
   Bell,
-  BarChart3,
-  Settings,
   UserCog,
   Award,
   Clock,
@@ -127,35 +124,9 @@ export const adminNav: NavItem[] = [
     icon: Bell,
   },
   {
-    title: "Assets",
-    url: "/admin/assets",
-    icon: FolderOpen,
-  },
-  {
-    title: "Reports",
-    url: "/admin/reports",
-    icon: BarChart3,
-    children: [
-      {
-        title: "Student Reports",
-        url: "/admin/reports/students",
-      },
-
-      {
-        title: "Trainers Reports",
-        url: "/admin/reports/trainers",
-      },
-
-      {
-        title: "Course Reports",
-        url: "/admin/reports/courses",
-      },
-    ],
-  },
-  {
-    title: "Settings",
-    url: "/admin/settings",
-    icon: Settings,
+    title: "Profile",
+    url: "/admin/profile",
+    icon: UserCog,
   },
 ];
 

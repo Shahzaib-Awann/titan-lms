@@ -15,7 +15,7 @@ const AssignmentsPage = async ({
     await getStudentPortalAssignments(batchId);
 
   return (
-    <div className="space-y-5 py-3">
+    <div className="space-y-5">
       {success ? (
         <DataTable
           columns={columns}
