@@ -16,6 +16,7 @@ import LeftQuizSection from "./left-quiz-section";
 import RightQuizSection from "./right-quiz-section";
 
 import type { AttemptQuizData } from "@/types/quizzes";
+import toast from "react-hot-toast";
 
 const QUESTIONS_PER_PAGE = 2;
 
@@ -253,8 +254,8 @@ const ClientAttemptPage = ({
 
     try {
       const submission = {
+        batchId,
         attemptId: data.attempt.id,
-
         answers: data.questions.map((question) => ({
           questionId: question.id,
           selectedOption: answersRef.current[question.id] as
@@ -266,11 +267,13 @@ const ClientAttemptPage = ({
         })),
       };
 
-      console.log("Submitting quiz:", submission);
-
       const result = await submitQuizAttempt(submission);
 
-      console.log("Quiz submitted successfully:", result);
+      if (!result.success) {
+        toast.error("Failed to submit quiz. Please try again.");
+
+        return;
+      }
 
       /**
        * Exit fullscreen after successful submission.
