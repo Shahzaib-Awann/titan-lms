@@ -174,10 +174,18 @@ export const manualQuizSchema = z
       .min(1, "Quiz must have at least one question"),
   })
   .superRefine((data, ctx) => {
-    if (data.status === "published" && !data.publishedDate) {
+    if (["published", "closed"].includes(data.status) && !data.publishedDate) {
       ctx.addIssue({
         code: "custom",
-        message: "Published date is required when status is published",
+        message: "Published date is required when status is published or closed",
+        path: ["publishedDate"],
+      });
+    }
+
+    if (data.status === "draft" && data.publishedDate !== null) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Draft quizzes cannot have a published date",
         path: ["publishedDate"],
       });
     }

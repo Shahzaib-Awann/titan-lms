@@ -411,7 +411,7 @@ export const quizAnswers = mysqlTable(
     attemptId: varchar("attempt_id", { length: 21 }).notNull().references(() => quizAttempts.id),
     questionId: varchar("question_id", { length: 21 }).notNull().references(() => quizQuestions.id),
 
-    selectedOption: quizOptionEnum.notNull(),
+    selectedOption: quizOptionEnum,
     isCorrect: boolean("is_correct").notNull(),
 
     marksAwarded: int("marks_awarded").notNull().default(0),

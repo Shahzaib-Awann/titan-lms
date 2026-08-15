@@ -197,6 +197,20 @@
       "when": 1786725481508,
       "tag": "0027_talented_echo",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "5",
+      "when": 1786792034993,
+      "tag": "0028_steady_jackpot",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "5",
+      "when": 1786792204550,
+      "tag": "0029_sparkling_starfox",
+      "breakpoints": true
     }
   ]
 }

@@ -25,8 +25,6 @@ const ManageQuizPage = async ({
     initialData = result.data;
   }
 
-  console.log(JSON.stringify(initialData, null, 2));
-
   return (
     <QuizzesClientPage
       batchId={batchId}

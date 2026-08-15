@@ -14,7 +14,7 @@ import {
 
 import { StudentPortalAssignment } from "./columns";
 import SubmissionFormDialog from "./submission-form-dialog";
-import { ViewAssignmentDialog } from "../../../../../../../components/pages/assignments/view-assignment-dialog";
+import { ViewAssignmentDialog } from "@/components/pages/assignments/view-assignment-dialog";
 
 type Props = {
   data: StudentPortalAssignment;
