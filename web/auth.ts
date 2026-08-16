@@ -32,7 +32,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           return null;
         }
 
-        const { password: _, ...safeUser } = user;
+        const { password: _password, ...safeUser } = user;
 
         return safeUser as User;
       },

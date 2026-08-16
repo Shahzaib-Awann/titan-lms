@@ -5,8 +5,6 @@ import {
   BookOpen,
   Calendar,
   Bell,
-  UserCog,
-  Award,
   Clock,
   UserPlus,
   Layers,
@@ -123,11 +121,6 @@ export const adminNav: NavItem[] = [
     url: "/admin/announcements",
     icon: Bell,
   },
-  {
-    title: "Profile",
-    url: "/admin/profile",
-    icon: UserCog,
-  },
 ];
 
 /* ========================================
@@ -155,11 +148,6 @@ export const trainerNav: NavItem[] = [
     url: "/trainer/announcements",
     icon: Bell,
   },
-  {
-    title: "Profile",
-    url: "/trainer/profile",
-    icon: UserCog,
-  },
 ];
 
 /* ========================================
@@ -178,11 +166,6 @@ export const studentNav: NavItem[] = [
     icon: BookOpen,
   },
   {
-    title: "Certificates",
-    url: "/student/certificates",
-    icon: Award,
-  },
-  {
     title: "Schedule",
     url: "/student/schedule",
     icon: Calendar,
@@ -191,11 +174,6 @@ export const studentNav: NavItem[] = [
     title: "Announcements",
     url: "/student/announcements",
     icon: Bell,
-  },
-  {
-    title: "Profile",
-    url: "/student/profile",
-    icon: UserCog,
   },
 ];
 

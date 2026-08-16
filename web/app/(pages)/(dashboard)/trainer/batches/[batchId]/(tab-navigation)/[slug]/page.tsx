@@ -7,7 +7,7 @@ const page = async ({
 }: {
   params: Promise<{ batchId: string; slug: string }>;
 }) => {
-  const { batchId, slug } = await params;
+  const { slug } = await params;
 
   return (
     <Card>

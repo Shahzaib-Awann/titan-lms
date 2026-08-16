@@ -1,5 +1,3 @@
-import { BatchStatus } from "./common";
-
 export interface DashboardBatchSchedule {
   id: string;
   weekday: string;
