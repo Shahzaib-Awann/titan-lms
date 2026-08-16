@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { useSidebar } from "./ui/sidebar";
+import Image from "next/image";
 
 export function SideBarHeader() {
   const { open } = useSidebar();
@@ -15,11 +16,17 @@ export function SideBarHeader() {
     >
       <div
         className={cn(
-          "flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold transition-transform duration-300",
+          "relative size-10 shrink-0 overflow-hidden rounded-full bg-primary text-primary-foreground font-bold transition-transform duration-300",
           open ? "scale-100" : "scale-75",
         )}
       >
-        T
+        <Image
+          src="/titan-logo.jpeg"
+          alt="Titan LMS"
+          fill
+          sizes="36px"
+          className="object-cover"
+        />
       </div>
 
       <div

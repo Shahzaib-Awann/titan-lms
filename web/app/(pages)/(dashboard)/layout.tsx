@@ -3,6 +3,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import Header from "@/components/header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Role } from "@/types/common";
+import { Chatbot } from "@/components/chatbot";
 
 export default async function DashboardLayout({
   children,
@@ -18,6 +19,7 @@ export default async function DashboardLayout({
       <SidebarInset>
         <Header />
         <main className="flex flex-1 flex-col gap-4 p-4 pt-0">{children}</main>
+        <Chatbot />
       </SidebarInset>
     </SidebarProvider>
   );
