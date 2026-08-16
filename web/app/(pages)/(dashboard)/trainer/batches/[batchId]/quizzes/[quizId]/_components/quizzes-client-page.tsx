@@ -17,6 +17,10 @@ import QuizeInfoCard from "./quize-info-card";
 import { EmptyQuestionState } from "./empty-questions-state";
 import { createOrUpdateManualQuiz } from "@/lib/actions/quizzes.action";
 import { useRouter } from "next/navigation";
+import {
+  AiQuizResponse,
+  GenerateAiQuizDialog,
+} from "./generate-ai-quiz-dialog";
 
 type ManualQuizFormValues = z.infer<typeof manualQuizSchema>;
 
@@ -26,6 +30,8 @@ const createMcqOptions = () => [
   { id: "c" as const, text: "" },
   { id: "d" as const, text: "" },
 ];
+
+type ManualQuestion = ManualQuizFormValues["questions"][number];
 
 const QuizzesClientPage = ({
   batchId,
@@ -37,6 +43,8 @@ const QuizzesClientPage = ({
   initialData?: ManualQuizFormValues;
 }) => {
   const [deletedQuestionIds, setDeletedQuestionIds] = useState<string[]>([]);
+  const [isAiDialogOpen, setIsAiDialogOpen] = useState(false);
+  const [isGeneratingAi, setIsGeneratingAi] = useState(false);
   const router = useRouter();
 
   const form = useForm<ManualQuizFormValues>({
@@ -45,6 +53,7 @@ const QuizzesClientPage = ({
       id: null,
       title: "",
       description: "",
+      type: "manual",
       durationMinutes: 30,
       status: "draft",
       publishedDate: null,
@@ -167,6 +176,50 @@ const QuizzesClientPage = ({
     [batchId, deletedQuestionIds, formReset, mode, initialData?.id],
   );
 
+  const handleAiQuestionsGenerated = useCallback(
+    (generatedQuestions: AiQuizResponse["questions"]) => {
+      const existingQuestions = getValues("questions");
+
+      const newQuestions: ManualQuestion[] = generatedQuestions.map(
+        (question, index) => {
+          if (question.type === "boolean") {
+            return {
+              id: createTempId(),
+              type: "boolean" as const,
+              question: question.question,
+              options: [
+                { id: "a" as const, text: "True" },
+                { id: "b" as const, text: "False" },
+              ],
+              correctOption: question.correctOption as "a" | "b",
+              marks: 1,
+              orderIndex: existingQuestions.length + index,
+            };
+          }
+
+          return {
+            id: createTempId(),
+            type: "mcq" as const,
+            question: question.question,
+            options: question.options,
+            correctOption: question.correctOption as "a" | "b" | "c" | "d",
+            marks: 1,
+            orderIndex: existingQuestions.length + index,
+          };
+        },
+      );
+
+      append(newQuestions);
+
+      setValue("type", "ai", {
+        shouldDirty: true,
+      });
+
+      clearErrors("questions");
+    },
+    [append, clearErrors, getValues, setValue],
+  );
+
   const questionsCount = questionTypes?.length ?? 0;
   const booleansCount =
     questionTypes?.filter((question) => question.type === "boolean").length ??
@@ -174,62 +227,71 @@ const QuizzesClientPage = ({
   const multipleChoiceCount =
     questionTypes?.filter((question) => question.type === "mcq").length ?? 0;
 
-  const formError = (e: unknown) => {
-    console.error(e);
+  const formError = (errors: typeof form.formState.errors) => {
+    console.log("❌ FORM VALIDATION ERRORS");
+    console.dir(errors, { depth: null });
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit, formError)}>
-      <QuizzesPageHeader
-        isUnsavedChanges={formState.isDirty}
-        showCreateButton
-        onCreateQuiz={handleAddQuestion}
-      />
-
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-3 items-start">
-        <div className="col-span-1 space-y-5 xl:col-span-2">
-          {questionFields.length > 0 ? (
-            <>
-              <div className="space-y-5">
-                {questionFields.map((field, index) => (
-                  <ListQuestionCard
-                    key={field._key}
-                    index={index}
-                    control={control}
-                    setValue={setValue}
-                    removeQuestion={handleDeleteQuestion}
-                  />
-                ))}
-              </div>
-
-              <div className="mx-auto w-fit">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleAddQuestion}
-                  className="mx-auto w-45"
-                >
-                  <Plus className="size-4" />
-                  Add Question
-                </Button>
-              </div>
-            </>
-          ) : (
-            <EmptyQuestionState
-              onCreateQuestion={handleAddQuestion}
-              error={questionsError}
-            />
-          )}
-        </div>
-
-        <QuizeInfoCard
-          control={control}
-          questionsCount={questionsCount}
-          booleansCount={booleansCount}
-          multipleChoiceCount={multipleChoiceCount}
+    <>
+      <form onSubmit={handleSubmit(onSubmit, formError)}>
+        <QuizzesPageHeader
+          isUnsavedChanges={formState.isDirty}
+          showCreateButton
+          onCreateQuiz={handleAddQuestion}
+          onGenerateWithAI={() => setIsAiDialogOpen(true)}
         />
-      </div>
-    </form>
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-3 items-start">
+          <div className="col-span-1 space-y-5 xl:col-span-2">
+            {questionFields.length > 0 ? (
+              <>
+                <div className="space-y-5">
+                  {questionFields.map((field, index) => (
+                    <ListQuestionCard
+                      key={field._key}
+                      index={index}
+                      control={control}
+                      setValue={setValue}
+                      removeQuestion={handleDeleteQuestion}
+                    />
+                  ))}
+                </div>
+
+                <div className="mx-auto w-fit">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleAddQuestion}
+                    className="mx-auto w-45"
+                  >
+                    <Plus className="size-4" />
+                    Add Question
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <EmptyQuestionState
+                onCreateQuestion={handleAddQuestion}
+                error={questionsError}
+              />
+            )}
+          </div>
+
+          <QuizeInfoCard
+            control={control}
+            questionsCount={questionsCount}
+            booleansCount={booleansCount}
+            multipleChoiceCount={multipleChoiceCount}
+          />
+        </div>
+      </form>
+      <GenerateAiQuizDialog
+        open={isAiDialogOpen}
+        onOpenChange={setIsAiDialogOpen}
+        batchId={batchId}
+        onGenerated={handleAiQuestionsGenerated}
+      />
+    </>
   );
 };
 

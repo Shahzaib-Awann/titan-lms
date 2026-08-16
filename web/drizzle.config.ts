@@ -32,5 +32,8 @@ export default defineConfig({
   dialect: "mysql",
   dbCredentials: {
     url: DATABASE_URL,
+    ssl: {
+      ca: process.env.DATABASE_CA_CERT?.replace(/\\n/g, '\n'), // <- SSL certificate for secure MySQL connection
+    },
   },
 });

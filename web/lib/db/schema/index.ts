@@ -11,8 +11,7 @@ import {
   time,
   unique,
   boolean,
-  foreignKey,
-  json,
+  foreignKey
 } from "drizzle-orm/mysql-core";
 
 // Enums
@@ -30,9 +29,6 @@ export const quizCreationMethodEnum = mysqlEnum("quiz_creation_method", ["manual
 export const quizStatusEnum = mysqlEnum("quiz_status", ["draft", "published", "closed", "archived"]);
 export const quizQuestionTypeEnum = mysqlEnum("quiz_question_type", ["mcq", "boolean"]);
 export const quizOptionEnum = mysqlEnum("quiz_option", ["a", "b", "c", "d"]);
-export const aiQuizSourceTypeEnum = mysqlEnum("ai_quiz_source_type", ["lesson", "asset"]);
-export const aiQuizGenerationStatusEnum = mysqlEnum("ai_quiz_generation_status", ["pending", "processing", "completed", "failed", "cancelled"]);
-export const aiQuizDifficultyEnum = mysqlEnum("ai_quiz_difficulty", ["easy", "medium", "hard"]);
 export const quizAttemptStatusEnum = mysqlEnum("quiz_attempt_status", ["in_progress", "submitted", "cancelled", "cheated"]);
 
 
@@ -421,52 +417,4 @@ export const quizAnswers = mysqlTable(
   (table) => [
     unique("quiz_attempt_question_unique").on(table.attemptId, table.questionId),
   ],
-);
-
-
-// AI Quiz Generation Jobs
-export const aiQuizGenerationJobs = mysqlTable("ai_quiz_generation_jobs", {
-    id: varchar("id", { length: 21 }).primaryKey(),
-
-    // Draft quiz being generated
-    quizId: varchar("quiz_id", { length: 21 }).notNull().references(() => quizzes.id),
-
-    // Where AI gets its knowledge from
-    sourceType: aiQuizSourceTypeEnum.notNull(),
-
-    // LMS module used as source
-    // NULL when using PDF/file only
-    sourceModuleId: varchar("source_module_id", { length: 21 }).references(() => courseModules.id),
-
-    // LMS lesson used as source
-    // NULL when using PDF/file only
-    sourceLessonId: varchar("source_lesson_id", { length: 21 }).references(() => moduleLessons.id),
-
-    // Uploaded PDF/file used as source
-    // NULL when using lesson only
-    sourceAssetId: varchar("source_asset_id", { length: 21 }).references(() => assets.id),
-
-    status: aiQuizGenerationStatusEnum.notNull().default("pending"),
-
-    questionCount: int("question_count").notNull(),
-
-    difficulty: aiQuizDifficultyEnum.notNull(),
-
-    // Example:
-    // {
-    //   "mcq": 7,
-    //   "boolean": 3
-    // }
-    questionTypes: json("question_types").notNull(),
-
-    // User-provided instructions for AI
-    customInstructions: text("custom_instructions"),
-
-    errorMessage: text("error_message"),
-
-    startedAt: timestamp("started_at"),
-    completedAt: timestamp("completed_at"),
-
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-  },
 );

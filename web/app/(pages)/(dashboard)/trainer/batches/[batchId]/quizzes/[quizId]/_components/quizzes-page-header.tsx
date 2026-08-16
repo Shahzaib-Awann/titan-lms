@@ -1,17 +1,19 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Plus, Save } from "lucide-react";
+import { Plus, Save, Sparkles } from "lucide-react";
 
 interface QuizzesPageHeaderProps {
   onCreateQuiz?: () => void;
   isUnsavedChanges: boolean;
   showCreateButton?: boolean;
+  onGenerateWithAI?: () => void;
 }
 
 export const QuizzesPageHeader = ({
   onCreateQuiz,
   isUnsavedChanges,
   showCreateButton = true,
+  onGenerateWithAI,
 }: QuizzesPageHeaderProps) => {
   return (
     <section className="flex items-start justify-between gap-6 p-6">
@@ -44,6 +46,16 @@ export const QuizzesPageHeader = ({
         >
           <Save className="h-4 w-4" />
           Save
+        </Button>
+
+        <Button
+          type="button"
+          // variant="outline"
+          onClick={onGenerateWithAI}
+          className="gap-2"
+        >
+          <Sparkles className="h-4 w-4" />
+          Generate with AI
         </Button>
 
         {showCreateButton && (

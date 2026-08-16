@@ -3,12 +3,13 @@
 import { and, asc, count, desc, eq, inArray, isNotNull, isNull, lte, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { courseBatches, enrollments, quizAnswers, quizAttempts, quizQuestions, quizzes, studentProfiles } from "../db/schema";
-import { manualQuizSchema } from "../zod/trainer.schema";
+import { generateAiQuizSchema, manualQuizSchema } from "../zod/trainer.schema";
 import z from "zod";
 import { getCurrentUser, requireRole, requireTrainer } from "./auth.action";
 import { db } from "../db";
 import { notFound } from "next/navigation";
 import { AttemptQuizResponse } from "@/types/quizzes";
+import { generateQuizQuestions } from "../ai/quiz-generator";
 
 export async function getQuizzesByBatchIdForDataTable(
   batchId: string,
@@ -235,6 +236,7 @@ export async function createOrUpdateManualQuiz(input: {
           .set({
             title,
             description,
+            creationMethod: payload.type,
             durationMinutes: payload.durationMinutes,
             totalMarks,
             status: payload.status,
@@ -246,7 +248,7 @@ export async function createOrUpdateManualQuiz(input: {
           id: quizId,
           batchId,
           createdBy: user.id,
-          creationMethod: "manual",
+          creationMethod: payload.type,
           title,
           description,
           durationMinutes: payload.durationMinutes,
@@ -447,6 +449,7 @@ export async function getManualQuizForEdit(
       id: quiz.id,
       title: quiz.title,
       description: quiz.description ?? "",
+      type: quiz.creationMethod,
       durationMinutes: quiz.durationMinutes,
       status: quiz.status as "draft" | "published" | "closed",
       publishedDate: quiz.publishedDate
@@ -1440,4 +1443,39 @@ export async function getQuizAttemptResult(
       passed,
     },
   };
+}
+
+export async function generateAiQuiz(input: {
+  batchId: string;
+  prompt: string;
+  questionCount: number;
+  difficulty: "easy" | "medium" | "hard";
+}) {
+  try {
+    await requireRole("trainer");
+
+    const parsed = generateAiQuizSchema.parse(input);
+
+    // Important:
+    // Verify trainer actually owns/teaches this batch.
+    // Do this before calling Groq.
+
+    const result = await generateQuizQuestions({
+      prompt: parsed.prompt,
+      questionCount: parsed.questionCount,
+      difficulty: parsed.difficulty,
+    });
+
+    return {
+      success: true,
+      data: result,
+    };
+  } catch (error) {
+    console.error("AI quiz generation error:", error);
+
+    return {
+      success: false,
+      error: "Failed to generate quiz questions.",
+    };
+  }
 }

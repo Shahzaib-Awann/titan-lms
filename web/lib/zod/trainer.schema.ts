@@ -158,6 +158,8 @@ export const manualQuizSchema = z
       .optional()
       .or(z.literal("")),
 
+    type: z.enum(["manual", "ai"]),
+
     durationMinutes: z
       .number()
       .int("Duration must be a whole number")
@@ -190,3 +192,44 @@ export const manualQuizSchema = z
       });
     }
   });
+
+
+  export const generateAiQuizSchema = z.object({
+  prompt: z
+    .string()
+    .trim()
+    .min(10, "Please provide a more detailed prompt.")
+    .max(1000, "Prompt cannot exceed 1000 characters."),
+
+  questionCount: z
+    .number()
+    .int()
+    .min(1)
+    .max(15),
+
+  difficulty: z.enum(["easy", "medium", "hard"]),
+});
+
+
+export const aiQuizQuestionSchema = z.object({
+  type: z.enum(["mcq", "boolean"]),
+
+  question: z
+    .string()
+    .trim()
+    .min(1)
+    .max(500),
+
+  options: z.array(
+    z.object({
+      id: z.enum(["a", "b", "c", "d"]),
+      text: z.string().trim().min(1).max(255),
+    }),
+  ),
+
+  correctOption: z.enum(["a", "b", "c", "d"]),
+});
+
+export const aiQuizResponseSchema = z.object({
+  questions: z.array(aiQuizQuestionSchema),
+});
