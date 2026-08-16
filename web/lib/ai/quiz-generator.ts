@@ -75,7 +75,7 @@ export async function generateQuizQuestions(
   const { prompt, questionCount, difficulty } =
     generateAiQuizSchema.parse(input);
 
-  const GROQ_API_KEY = process.env.GROQ_API_KEY;
+  const GROQ_API_KEY = process.env.GROQ_API_KEY?.trim();
 
   if (!GROQ_API_KEY) {
     throw new Error("GROQ_API_KEY is not defined.");
