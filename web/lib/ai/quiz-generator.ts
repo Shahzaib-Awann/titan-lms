@@ -23,13 +23,27 @@ Requirements:
 - Keep every question clear, accurate, and educational.
 - Avoid duplicate or nearly duplicate questions.
 - Use both MCQ and boolean questions when appropriate.
-- MCQ questions must have exactly four options: a, b, c, d.
-- Boolean questions must have exactly two options: a = True and b = False.
-- correctOption must identify the correct answer.
-- Do not include explanations.
-- Do not include markdown.
-- Do not include information unrelated to the requested topic.
-- Return ONLY valid JSON structured response.
+- MCQ questions must have exactly four options with ids: "a", "b", "c", "d".
+- Boolean questions must have exactly two options with ids: "a" (True) and "b" (False).
+- correctOption must identify the correct answer option id ("a", "b", "c", or "d").
+- Do not include explanations or markdown.
+
+You MUST return a JSON object with this EXACT structure:
+{
+  "questions": [
+    {
+      "type": "mcq",
+      "question": "Question text...",
+      "options": [
+        { "id": "a", "text": "Option A" },
+        { "id": "b", "text": "Option B" },
+        { "id": "c", "text": "Option C" },
+        { "id": "d", "text": "Option D" }
+      ],
+      "correctOption": "a"
+    }
+  ]
+}
 `.trim();
 
 function validateAiQuizResponse(response: AiQuizResponse): AiQuizResponse {
@@ -84,7 +98,6 @@ export async function generateQuizQuestions(
     );
   }
 
-  // Initialize native Groq SDK client
   const groq = new Groq({
     apiKey: GROQ_API_KEY,
   });
@@ -118,7 +131,19 @@ export async function generateQuizQuestions(
   }
 
   const parsedJson = JSON.parse(rawContent);
-  const validatedResponse = aiQuizResponseSchema.parse(parsedJson);
+
+  // Fallback handler: normalize JSON if AI returns an array or uses an alternate root key
+  let normalizedData = parsedJson;
+  if (Array.isArray(parsedJson)) {
+    normalizedData = { questions: parsedJson };
+  } else if (parsedJson && typeof parsedJson === "object" && !parsedJson.questions) {
+    const arrayKey = Object.values(parsedJson).find(Array.isArray);
+    if (arrayKey) {
+      normalizedData = { questions: arrayKey };
+    }
+  }
+
+  const validatedResponse = aiQuizResponseSchema.parse(normalizedData);
 
   return validateAiQuizResponse(validatedResponse);
 }
