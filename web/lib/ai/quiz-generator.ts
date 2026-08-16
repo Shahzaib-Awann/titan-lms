@@ -10,25 +10,7 @@ import {
 
 export type AiQuizResponse = z.infer<typeof aiQuizResponseSchema>;
 
-type GenerateQuizQuestionsInput = z.infer<
-  typeof generateAiQuizSchema
->;
-
-const GROQ_API_KEY = process.env.GROQ_API_KEY;
-
-if (!GROQ_API_KEY) {
-  throw new Error("GROQ_API_KEY is not defined.");
-}
-
-const model = new ChatGroq({
-  apiKey: GROQ_API_KEY,
-  model: "openai/gpt-oss-120b",
-  temperature: 0.3,
-});
-
-const structuredModel = model.withStructuredOutput(
-  aiQuizResponseSchema,
-);
+type GenerateQuizQuestionsInput = z.infer<typeof generateAiQuizSchema>;
 
 const SYSTEM_PROMPT = `
 You are an expert educational quiz generator.
@@ -50,18 +32,14 @@ Requirements:
 - Return only the structured quiz response.
 `.trim();
 
-function validateAiQuizResponse(
-  response: AiQuizResponse,
-): AiQuizResponse {
+function validateAiQuizResponse(response: AiQuizResponse): AiQuizResponse {
   if (response.questions.length === 0) {
     throw new Error("AI generated no questions.");
   }
 
   for (const question of response.questions) {
     if (question.type === "boolean") {
-      const optionIds = question.options.map(
-        (option) => option.id,
-      );
+      const optionIds = question.options.map((option) => option.id);
 
       if (
         question.options.length !== 2 ||
@@ -69,17 +47,13 @@ function validateAiQuizResponse(
         optionIds[1] !== "b" ||
         !["a", "b"].includes(question.correctOption)
       ) {
-        throw new Error(
-          "AI generated an invalid boolean question.",
-        );
+        throw new Error("AI generated an invalid boolean question.");
       }
 
       continue;
     }
 
-    const optionIds = question.options.map(
-      (option) => option.id,
-    );
+    const optionIds = question.options.map((option) => option.id);
 
     if (
       question.options.length !== 4 ||
@@ -88,9 +62,7 @@ function validateAiQuizResponse(
       optionIds[2] !== "c" ||
       optionIds[3] !== "d"
     ) {
-      throw new Error(
-        "AI generated an invalid multiple-choice question.",
-      );
+      throw new Error("AI generated an invalid multiple-choice question.");
     }
   }
 
@@ -102,6 +74,20 @@ export async function generateQuizQuestions(
 ): Promise<AiQuizResponse> {
   const { prompt, questionCount, difficulty } =
     generateAiQuizSchema.parse(input);
+
+  const GROQ_API_KEY = process.env.GROQ_API_KEY;
+
+  if (!GROQ_API_KEY) {
+    throw new Error("GROQ_API_KEY is not defined.");
+  }
+
+  const model = new ChatGroq({
+    apiKey: GROQ_API_KEY,
+    model: "openai/gpt-oss-120b",
+    temperature: 0.3,
+  });
+
+  const structuredModel = model.withStructuredOutput(aiQuizResponseSchema);
 
   const response = await structuredModel.invoke([
     {
@@ -120,8 +106,7 @@ export async function generateQuizQuestions(
     },
   ]);
 
-  const validatedResponse =
-    aiQuizResponseSchema.parse(response);
+  const validatedResponse = aiQuizResponseSchema.parse(response);
 
   return validateAiQuizResponse(validatedResponse);
 }

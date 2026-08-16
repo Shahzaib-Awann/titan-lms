@@ -1793,13 +1793,10 @@ export async function generateAiQuiz(input: {
   difficulty: "easy" | "medium" | "hard";
 }) {
   try {
+
     await requireRole("trainer");
 
     const parsed = generateAiQuizSchema.parse(input);
-
-    // Important:
-    // Verify trainer actually owns/teaches this batch.
-    // Do this before calling Groq.
 
     const result = await generateQuizQuestions({
       prompt: parsed.prompt,
