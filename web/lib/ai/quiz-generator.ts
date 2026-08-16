@@ -75,15 +75,25 @@ export async function generateQuizQuestions(
   const { prompt, questionCount, difficulty } =
     generateAiQuizSchema.parse(input);
 
-  const GROQ_API_KEY = process.env.GROQ_API_KEY?.trim();
+  const rawKey = process.env.GROQ_API_KEY || "";
+  const GROQ_API_KEY = rawKey.replace(/^["']|["']$/g, "").trim();
 
-  if (!GROQ_API_KEY) {
-    throw new Error("GROQ_API_KEY is not defined.");
+console.log("GROQ KEY CHECK:", {
+  length: rawKey.length,
+  startsWithGsk: rawKey.startsWith("gsk_"),
+  hasQuotes: rawKey.startsWith('"') || rawKey.startsWith("'"),
+  prefix: rawKey.slice(0, 5),
+});
+
+  if (!GROQ_API_KEY || !GROQ_API_KEY.startsWith("gsk_")) {
+    throw new Error(
+      `Invalid GROQ_API_KEY. Key must start with 'gsk_'. Received prefix: '${GROQ_API_KEY.slice(0, 4)}'`,
+    );
   }
 
   const model = new ChatGroq({
     apiKey: GROQ_API_KEY,
-    model: "openai/gpt-oss-120b",
+    model: "llama-3.3-70b-versatile",
     temperature: 0.3,
   });
 
