@@ -48,12 +48,7 @@ export const QuizzesPageHeader = ({
           Save
         </Button>
 
-        <Button
-          type="button"
-          // variant="outline"
-          onClick={onGenerateWithAI}
-          className="gap-2"
-        >
+        <Button type="button" onClick={onGenerateWithAI} className="gap-2">
           <Sparkles className="h-4 w-4" />
           Generate with AI
         </Button>

@@ -3,6 +3,8 @@
 import { memo } from "react";
 import { Control, Controller } from "react-hook-form";
 import { z } from "zod";
+import { format } from "date-fns";
+import { CalendarIcon } from "lucide-react";
 
 import { manualQuizSchema } from "@/lib/zod/trainer.schema";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,40 +24,45 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+// Define the form values type.
 type ManualQuizFormValues = z.infer<typeof manualQuizSchema>;
 
-interface QuizeInfoCardProps {
+interface QuizInfoCardProps {
   control: Control<ManualQuizFormValues>;
   questionsCount: number;
   booleansCount: number;
   multipleChoiceCount: number;
 }
 
-const QuizeInfoCard = memo(function QuizeInfoCard({
+// Quiz info card component for displaying quiz meta data.
+const QuizInfoCard = memo(function QuizInfoCard({
   control,
   questionsCount,
   booleansCount,
   multipleChoiceCount,
-}: QuizeInfoCardProps) {
+}: QuizInfoCardProps) {
   return (
     <Card>
       <CardContent className="space-y-5">
         <div className="grid grid-cols-3 gap-2">
+          {/* Total number of questions */}
           <StatCard
             label="Questions"
             value={questionsCount}
             color="text-emerald-400"
           />
+
+          {/* Total number of boolean questions */}
           <StatCard
             label="Booleans"
             value={booleansCount}
             color="text-orange-400"
           />
+
+          {/* Total number of mcq questions */}
           <StatCard
             label="MCQs"
             value={multipleChoiceCount}
@@ -63,6 +70,7 @@ const QuizeInfoCard = memo(function QuizeInfoCard({
           />
         </div>
 
+        {/* Quiz title */}
         <Controller
           name="title"
           control={control}
@@ -71,34 +79,41 @@ const QuizeInfoCard = memo(function QuizeInfoCard({
               <FieldLabel htmlFor="quiz-title" required>
                 Quiz title
               </FieldLabel>
+
               <Input
                 {...field}
                 id="quiz-title"
                 placeholder="Enter quiz title..."
               />
+
               <FieldError errors={fieldState.error ? [fieldState.error] : []} />
             </Field>
           )}
         />
 
+        {/* Quiz description */}
         <Controller
           name="description"
           control={control}
           render={({ field, fieldState }) => (
             <Field data-invalid={fieldState.invalid}>
               <FieldLabel htmlFor="quiz-description">Description</FieldLabel>
+
               <Textarea
                 {...field}
                 id="quiz-description"
                 placeholder="Enter quiz description..."
                 rows={4}
               />
+
               <FieldError errors={fieldState.error ? [fieldState.error] : []} />
             </Field>
           )}
         />
 
-        <div className="flex flex-row gap-2 items-center">
+        {/* Quiz duration and status in a single row */}
+        <div className="flex items-center gap-2">
+          {/* Quiz duration */}
           <Controller
             name="durationMinutes"
             control={control}
@@ -106,10 +121,11 @@ const QuizeInfoCard = memo(function QuizeInfoCard({
               <Field data-invalid={fieldState.invalid}>
                 <FieldLabel htmlFor="quiz-duration" required>
                   Duration{" "}
-                  <span className="font-normal text-sm text-muted-foreground">
+                  <span className="text-sm font-normal text-muted-foreground">
                     (mins)
                   </span>
                 </FieldLabel>
+
                 <Input
                   id="quiz-duration"
                   type="number"
@@ -119,6 +135,7 @@ const QuizeInfoCard = memo(function QuizeInfoCard({
                     field.onChange(event.target.valueAsNumber)
                   }
                 />
+
                 <FieldError
                   errors={fieldState.error ? [fieldState.error] : []}
                 />
@@ -126,6 +143,7 @@ const QuizeInfoCard = memo(function QuizeInfoCard({
             )}
           />
 
+          {/* Quiz status */}
           <Controller
             name="status"
             control={control}
@@ -134,19 +152,19 @@ const QuizeInfoCard = memo(function QuizeInfoCard({
                 <FieldLabel htmlFor="quiz-status" required>
                   Status
                 </FieldLabel>
+
                 <Select value={field.value} onValueChange={field.onChange}>
                   <SelectTrigger>
-                    <SelectValue
-                      placeholder="Select status"
-                      className="capitalize"
-                    />
+                    <SelectValue placeholder="Select status" />
                   </SelectTrigger>
+
                   <SelectContent>
                     <SelectItem value="draft">Draft</SelectItem>
                     <SelectItem value="published">Published</SelectItem>
                     <SelectItem value="closed">Closed</SelectItem>
                   </SelectContent>
                 </Select>
+
                 <FieldError
                   errors={fieldState.error ? [fieldState.error] : []}
                 />
@@ -155,6 +173,7 @@ const QuizeInfoCard = memo(function QuizeInfoCard({
           />
         </div>
 
+        {/* Quiz published date */}
         <Controller
           name="publishedDate"
           control={control}
@@ -163,6 +182,7 @@ const QuizeInfoCard = memo(function QuizeInfoCard({
               <FieldLabel htmlFor="quiz-published-date">
                 Published Date
               </FieldLabel>
+
               <Popover>
                 <PopoverTrigger
                   render={
@@ -185,16 +205,12 @@ const QuizeInfoCard = memo(function QuizeInfoCard({
                   )}
                 </PopoverTrigger>
 
-                <PopoverContent className="w-auto p-0 bg-card" align="start">
+                <PopoverContent className="w-auto bg-card p-0" align="start">
                   <Calendar
                     mode="single"
                     selected={field.value ? new Date(field.value) : undefined}
-                    onSelect={(value) => {
-                      if (value) {
-                        field.onChange(format(value, "yyyy-MM-dd"));
-                      }
-
-                      return null;
+                    onSelect={(date) => {
+                      field.onChange(date ? format(date, "yyyy-MM-dd") : null);
                     }}
                   />
 
@@ -212,6 +228,7 @@ const QuizeInfoCard = memo(function QuizeInfoCard({
                   )}
                 </PopoverContent>
               </Popover>
+
               <FieldError errors={fieldState.error ? [fieldState.error] : []} />
             </Field>
           )}
@@ -221,6 +238,7 @@ const QuizeInfoCard = memo(function QuizeInfoCard({
   );
 });
 
+// Render a single stat card.
 function StatCard({
   label,
   value,
@@ -235,9 +253,10 @@ function StatCard({
       <p className="text-xs font-bold uppercase text-muted-foreground">
         {label}
       </p>
+
       <p className={`mt-2 text-3xl font-semibold ${color}`}>{value}</p>
     </div>
   );
 }
 
-export default QuizeInfoCard;
+export default QuizInfoCard;

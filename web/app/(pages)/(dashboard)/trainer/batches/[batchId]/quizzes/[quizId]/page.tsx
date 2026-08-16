@@ -1,8 +1,7 @@
-import React from "react";
 import { notFound } from "next/navigation";
 
-import QuizzesClientPage from "./_components/quizzes-client-page";
-import { getManualQuizForEdit } from "@/lib/actions/quizzes.action";
+import QuizzesClientPage from "@/components/pages/trainer/batches/quizzes/quizzes-client-page";
+import { getQuizForEdit } from "@/lib/actions/quizzes.action";
 
 const ManageQuizPage = async ({
   params,
@@ -16,7 +15,7 @@ const ManageQuizPage = async ({
   let initialData;
 
   if (editMode) {
-    const result = await getManualQuizForEdit(quizId, batchId);
+    const result = await getQuizForEdit(quizId, batchId);
 
     if (!result.success || !result.data) {
       notFound();

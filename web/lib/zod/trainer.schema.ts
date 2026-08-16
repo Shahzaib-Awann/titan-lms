@@ -72,7 +72,7 @@ export const AssignmentSubmissionGradingFormSchema = (maxMarks: number) => z.obj
     feedback: z.string().max(1000, "Feedback must be 1000 characters or less."),
   });
 
-// Quiz option
+
 const optionSchema = z.object({
   id: z.enum(["a", "b", "c", "d"]),
   text: z
@@ -82,65 +82,64 @@ const optionSchema = z.object({
     .max(255, "Option text cannot exceed 255 characters"),
 });
 
-// MCQ question
 const mcqQuestionSchema = z.object({
   id: z.string().nullable(),
-
   type: z.literal("mcq"),
-
   question: z
     .string()
     .trim()
     .min(1, "Question is required")
     .max(500, "Question text cannot exceed 500 characters"),
-
-  options: z.array(optionSchema).length(4, "MCQ must have exactly 4 options"),
-
-  correctOption: z.enum(["a", "b", "c", "d"]),
-
-  marks: z
-    .number()
-    .int("Marks must be a whole number")
-    .min(1, "Marks must be at least 1"),
-
-  orderIndex: z
-    .number()
-    .int("Order index must be a whole number")
-    .min(0, "Order index cannot be negative"),
-});
-
-// Boolean question
-const booleanQuestionSchema = z.object({
-  id: z.string().nullable(),
-
-  type: z.literal("boolean"),
-
-  question: z.string().trim().min(1, "Question is required"),
-
   options: z
     .array(optionSchema)
-    .length(2, "Boolean question must have exactly 2 options"),
-
-  correctOption: z.enum(["a", "b"]),
-
+    .length(4, "MCQ must have exactly 4 options"),
+  correctOption: z.enum(["a", "b", "c", "d"]),
   marks: z
     .number()
     .int("Marks must be a whole number")
     .min(1, "Marks must be at least 1"),
-
   orderIndex: z
     .number()
     .int("Order index must be a whole number")
     .min(0, "Order index cannot be negative"),
 });
 
-// Question
+const booleanQuestionSchema = z.object({
+  id: z.string().nullable(),
+  type: z.literal("boolean"),
+  question: z
+    .string()
+    .trim()
+    .min(1, "Question is required")
+    .max(500, "Question text cannot exceed 500 characters"),
+  options: z
+    .array(
+      z.object({
+        id: z.enum(["a", "b"]),
+        text: z
+          .string()
+          .trim()
+          .min(1, "Option is required")
+          .max(255, "Option text cannot exceed 255 characters"),
+      }),
+    )
+    .length(2, "Boolean question must have exactly 2 options"),
+  correctOption: z.enum(["a", "b"]),
+  marks: z
+    .number()
+    .int("Marks must be a whole number")
+    .min(1, "Marks must be at least 1"),
+  orderIndex: z
+    .number()
+    .int("Order index must be a whole number")
+    .min(0, "Order index cannot be negative"),
+});
+
 const questionSchema = z.discriminatedUnion("type", [
   mcqQuestionSchema,
   booleanQuestionSchema,
 ]);
 
-// Create / Edit manual quiz
 export const manualQuizSchema = z
   .object({
     id: z.string().nullable(),
@@ -176,10 +175,14 @@ export const manualQuizSchema = z
       .min(1, "Quiz must have at least one question"),
   })
   .superRefine((data, ctx) => {
-    if (["published", "closed"].includes(data.status) && !data.publishedDate) {
+    if (
+      ["published", "closed"].includes(data.status) &&
+      !data.publishedDate
+    ) {
       ctx.addIssue({
         code: "custom",
-        message: "Published date is required when status is published or closed",
+        message:
+          "Published date is required when status is published or closed",
         path: ["publishedDate"],
       });
     }
@@ -193,8 +196,7 @@ export const manualQuizSchema = z
     }
   });
 
-
-  export const generateAiQuizSchema = z.object({
+export const generateAiQuizSchema = z.object({
   prompt: z
     .string()
     .trim()
@@ -204,12 +206,11 @@ export const manualQuizSchema = z
   questionCount: z
     .number()
     .int()
-    .min(1)
-    .max(15),
+    .min(1, "At least one question is required.")
+    .max(15, "You can generate up to 15 questions."),
 
   difficulty: z.enum(["easy", "medium", "hard"]),
 });
-
 
 export const aiQuizQuestionSchema = z.object({
   type: z.enum(["mcq", "boolean"]),
@@ -220,12 +221,15 @@ export const aiQuizQuestionSchema = z.object({
     .min(1)
     .max(500),
 
-  options: z.array(
-    z.object({
-      id: z.enum(["a", "b", "c", "d"]),
-      text: z.string().trim().min(1).max(255),
-    }),
-  ),
+  options: z
+    .array(
+      z.object({
+        id: z.enum(["a", "b", "c", "d"]),
+        text: z.string().trim().min(1).max(255),
+      }),
+    )
+    .min(2)
+    .max(4),
 
   correctOption: z.enum(["a", "b", "c", "d"]),
 });

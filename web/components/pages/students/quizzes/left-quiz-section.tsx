@@ -1,28 +1,28 @@
-import React, { memo } from "react";
+import { memo } from "react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
-type Option = {
+interface Option {
   id: string;
   text: string;
-};
+}
 
-type Question = {
+interface Question {
   id: string;
   type: string;
   question: string;
   options: Option[];
   marks: number;
   orderIndex: number;
-};
+}
 
-type LeftQuizSectionProps = {
+interface LeftQuizSectionProps {
   questions: Question[];
   answers: Record<string, string>;
   onAnswerChange: (questionId: string, answerId: string) => void;
-};
+}
 
 const LeftQuizSection = memo(function LeftQuizSection({
   questions,
@@ -45,11 +45,11 @@ const LeftQuizSection = memo(function LeftQuizSection({
 
 export default LeftQuizSection;
 
-type QuestionCardProps = {
+interface QuestionCardProps {
   question: Question;
   selectedAnswer: string;
   onAnswerChange: (questionId: string, answerId: string) => void;
-};
+}
 
 const QuestionCard = memo(function QuestionCard({
   question,
@@ -70,8 +70,9 @@ const QuestionCard = memo(function QuestionCard({
             type="text"
             readOnly
             label="Type"
-            value={question.type}
-            className="w-50"
+            value={question.type === "mcq" ? "Multiple Choice" : question.type}
+            className="w-50 min-w-0 select-none"
+            onMouseDown={(e) => e.preventDefault()}
           />
 
           <Input
@@ -79,7 +80,8 @@ const QuestionCard = memo(function QuestionCard({
             readOnly
             label="Marks"
             value={question.marks}
-            className="w-30"
+            className="w-30 min-w-0 select-none"
+            onMouseDown={(e) => e.preventDefault()}
           />
         </div>
 
@@ -88,6 +90,8 @@ const QuestionCard = memo(function QuestionCard({
           label="Question"
           value={question.question}
           aria-label="Question"
+          className="min-w-0 flex-1 select-none"
+          onMouseDown={(e) => e.preventDefault()}
         />
 
         <div>
@@ -96,7 +100,7 @@ const QuestionCard = memo(function QuestionCard({
           <RadioGroup
             value={selectedAnswer}
             onValueChange={(value) => onAnswerChange(question.id, value)}
-            className="grid grid-cols-2 gap-4"
+            className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-15"
           >
             {question.options.map((option) => (
               <OptionField
@@ -124,14 +128,16 @@ const OptionField = memo(function OptionField({
   const optionInputId = `${questionId}-${option.id}`;
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex w-full items-center gap-5">
       <RadioGroupItem value={option.id} id={optionInputId} />
 
       <Input
         readOnly
         value={option.text}
-        className="flex-1"
+        className="min-w-0 flex-1 select-none"
+        wrapperClassName="w-full"
         aria-label={option.text}
+        onMouseDown={(e) => e.preventDefault()}
       />
     </div>
   );

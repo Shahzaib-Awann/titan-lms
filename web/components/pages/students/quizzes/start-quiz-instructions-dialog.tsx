@@ -1,7 +1,5 @@
 "use client";
 
-import React from "react";
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -10,22 +8,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
-type Props = {
-  batchId: string;
-  quizId: string;
+interface StartQuizInstructionsDialogProps {
   handleStartQuiz: () => void;
   handleCancelQuiz: () => void;
   isStarting: boolean;
-};
+}
 
 const StartQuizInstructionsDialog = ({
-  batchId,
-  quizId,
   handleStartQuiz,
   handleCancelQuiz,
   isStarting,
-}: Props) => {
+}: StartQuizInstructionsDialogProps) => {
   return (
     <Dialog open>
       <DialogContent className="sm:max-w-lg">
@@ -53,24 +48,19 @@ const StartQuizInstructionsDialog = ({
               <li>• Submit your quiz before the timer expires.</li>
             </ul>
           </div>
-
-          <div className="space-y-1 text-sm text-muted-foreground">
-            <p>
-              <span className="font-medium text-foreground">Batch:</span>{" "}
-              {batchId}
-            </p>
-            <p>
-              <span className="font-medium text-foreground">Quiz:</span>{" "}
-              {quizId}
-            </p>
-          </div>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleCancelQuiz}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleCancelQuiz}
+            disabled={isStarting}
+          >
             Back
           </Button>
-          <Button onClick={handleStartQuiz} disabled={isStarting}>
+
+          <Button type="button" onClick={handleStartQuiz} disabled={isStarting}>
             {isStarting ? "Starting Quiz..." : "I Understand — Start Quiz"}
           </Button>
         </DialogFooter>

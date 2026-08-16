@@ -88,7 +88,7 @@ export async function getQuizzesByBatchIdForDataTable(
   }
 }
 
-export async function createOrUpdateManualQuiz(input: {
+export async function createOrUpdateQuiz(input: {
   batchId: string;
   payload: z.infer<typeof manualQuizSchema>;
   deletedQuestionIds?: string[];
@@ -376,7 +376,7 @@ export async function createOrUpdateManualQuiz(input: {
   }
 }
 
-export async function getManualQuizForEdit(
+export async function getQuizForEdit(
   quizId: string,
   batchId: string,
 ): Promise<{
@@ -738,11 +738,17 @@ export async function validateQuizAttempt(
     .limit(1);
 
   if (!validation) {
-    notFound();
+    return {
+      success: false,
+      error: "You are not enrolled in this batch or quiz is not published.",
+    }
   }
 
   if (validation.attemptId) {
-    notFound();
+    return {
+      success: false,
+      error: "You have already attempted this quiz.",
+    }
   }
 
   return {
@@ -1227,6 +1233,333 @@ export async function submitQuizAttempt(
   });
 }
 
+export async function cancelQuizAttempt(
+  payload: {
+    batchId: string;
+    attemptId: string;
+    cancellationReason: string;
+    answers: {
+      questionId: string;
+      selectedOption: "a" | "b" | "c" | "d" | null;
+    }[];
+  },
+) {
+  const user = await getCurrentUser({ fresh: true });
+
+  if (!user) {
+    throw new Error("Unauthorized");
+  }
+
+  if (user.role !== "student") {
+    throw new Error("Only students can cancel quizzes");
+  }
+
+  if (user.status !== "active") {
+    throw new Error("Your account is not active");
+  }
+
+  if (!payload?.attemptId) {
+    throw new Error("Attempt ID is required");
+  }
+
+  if (!payload?.batchId) {
+    throw new Error("Batch ID is required");
+  }
+
+  if (!payload?.cancellationReason?.trim()) {
+    throw new Error("Cancellation reason is required");
+  }
+
+  if (!Array.isArray(payload.answers)) {
+    throw new Error("Answers must be an array");
+  }
+
+  const questionIds = payload.answers.map(
+    (answer) => answer.questionId,
+  );
+
+  if (new Set(questionIds).size !== questionIds.length) {
+    throw new Error("Duplicate question IDs are not allowed");
+  }
+
+  return db.transaction(async (tx) => {
+    /**
+     * Verify that this attempt:
+     * - belongs to the authenticated student
+     * - belongs to the requested batch
+     * - is still in progress
+     */
+    const [attempt] = await tx
+      .select({
+        attemptId: quizAttempts.id,
+        attemptStatus: quizAttempts.status,
+        startedAt: quizAttempts.startedAt,
+
+        quizId: quizzes.id,
+        durationMinutes: quizzes.durationMinutes,
+
+        enrollmentId: enrollments.id,
+        enrollmentStatus: enrollments.status,
+        batchId: enrollments.batchId,
+      })
+      .from(quizAttempts)
+      .innerJoin(
+        quizzes,
+        eq(
+          quizAttempts.quizId,
+          quizzes.id,
+        ),
+      )
+      .innerJoin(
+        enrollments,
+        eq(
+          quizAttempts.enrollmentId,
+          enrollments.id,
+        ),
+      )
+      .innerJoin(
+        studentProfiles,
+        eq(
+          enrollments.studentId,
+          studentProfiles.id,
+        ),
+      )
+      .where(
+        and(
+          eq(
+            quizAttempts.id,
+            payload.attemptId,
+          ),
+          eq(
+            studentProfiles.userId,
+            user.id,
+          ),
+          isNull(studentProfiles.deletedAt),
+          eq(
+            enrollments.batchId,
+            payload.batchId,
+          ),
+        ),
+      )
+      .limit(1);
+
+    if (!attempt) {
+      throw new Error("Quiz attempt not found");
+    }
+
+    if (attempt.attemptStatus !== "in_progress") {
+      throw new Error(
+        `This quiz attempt is already ${attempt.attemptStatus}`,
+      );
+    }
+
+    if (attempt.enrollmentStatus !== "active") {
+      throw new Error("Your enrollment is not active");
+    }
+
+    /**
+     * Get all questions belonging to this quiz.
+     */
+    const questions = await tx
+      .select({
+        id: quizQuestions.id,
+        correctOption: quizQuestions.correctOption,
+        marks: quizQuestions.marks,
+        orderIndex: quizQuestions.orderIndex,
+      })
+      .from(quizQuestions)
+      .where(
+        eq(
+          quizQuestions.quizId,
+          attempt.quizId,
+        ),
+      )
+      .orderBy(
+        asc(quizQuestions.orderIndex),
+      );
+
+    if (questions.length === 0) {
+      throw new Error(
+        "This quiz has no questions",
+      );
+    }
+
+    const questionMap = new Map(
+      questions.map((question) => [
+        question.id,
+        question,
+      ]),
+    );
+
+    /**
+     * Convert submitted answers into a Map
+     * for quick lookup.
+     */
+    const submittedAnswers = new Map(
+      payload.answers.map((answer) => [
+        answer.questionId,
+        answer.selectedOption,
+      ]),
+    );
+
+    /**
+     * Make sure the client hasn't submitted
+     * questions from another quiz.
+     */
+    for (const questionId of submittedAnswers.keys()) {
+      if (!questionMap.has(questionId)) {
+        throw new Error(
+          `Question ${questionId} does not belong to this quiz`,
+        );
+      }
+    }
+
+    /**
+     * Store the student's current progress.
+     *
+     * We create a row for every question, including
+     * unanswered questions.
+     *
+     * This means that after cancellation you can
+     * reconstruct exactly what the student had selected.
+     */
+    const answerRows = questions.map(
+      (question) => {
+        const selectedOption =
+          submittedAnswers.get(
+            question.id,
+          ) ?? null;
+
+        const isCorrect =
+          selectedOption !== null &&
+          selectedOption ===
+            question.correctOption;
+
+        const marksAwarded = isCorrect
+          ? question.marks
+          : 0;
+
+        return {
+          id: nanoid(21),
+
+          attemptId: attempt.attemptId,
+          questionId: question.id,
+
+          selectedOption,
+
+          isCorrect,
+          marksAwarded,
+        };
+      },
+    );
+
+    const cancelledAt = new Date();
+
+    /**
+     * Save the current answers/progress.
+     */
+    await tx
+      .insert(quizAnswers)
+      .values(answerRows);
+
+    /**
+     * Cancel the attempt.
+     *
+     * We intentionally don't set score here because
+     * this attempt was cancelled rather than submitted.
+     */
+    const updateResult = await tx
+      .update(quizAttempts)
+      .set({
+        status: "cancelled",
+
+        cancelledAt,
+
+        cancellationReason:
+          payload.cancellationReason.trim(),
+
+        updatedAt: cancelledAt,
+      })
+      .where(
+        and(
+          eq(
+            quizAttempts.id,
+            attempt.attemptId,
+          ),
+          eq(
+            quizAttempts.status,
+            "in_progress",
+          ),
+        ),
+      );
+
+    if (updateResult[0]?.affectedRows !== 1) {
+      throw new Error(
+        "This quiz attempt has already been cancelled or submitted.",
+      );
+    }
+
+    /**
+     * Calculate progress information.
+     *
+     * This is NOT treated as the final score.
+     * It is only useful for reporting what the
+     * student had completed before cancellation.
+     */
+    let answeredCount = 0;
+    let correctCount = 0;
+
+    for (const row of answerRows) {
+      if (row.selectedOption !== null) {
+        answeredCount++;
+      }
+
+      if (row.isCorrect) {
+        correctCount++;
+      }
+    }
+
+    const questionCount = questions.length;
+
+    const unansweredCount =
+      questionCount - answeredCount;
+
+    const incorrectCount =
+      answeredCount - correctCount;
+
+    return {
+      success: true,
+
+      attempt: {
+        id: attempt.attemptId,
+        quizId: attempt.quizId,
+        batchId: attempt.batchId,
+
+        status: "cancelled",
+
+        startedAt: attempt.startedAt,
+        cancelledAt,
+
+        durationMinutes:
+          attempt.durationMinutes,
+
+        cancellationReason:
+          payload.cancellationReason.trim(),
+      },
+
+      progress: {
+        questionCount,
+
+        answeredCount,
+        unansweredCount,
+
+        correctCount,
+        incorrectCount,
+      },
+    };
+  });
+}
+
 export async function getQuizAttemptResult(
   attemptId: string,
 ) {
@@ -1244,6 +1577,11 @@ export async function getQuizAttemptResult(
       attemptStatus: quizAttempts.status,
       startedAt: quizAttempts.startedAt,
       submittedAt: quizAttempts.submittedAt,
+
+      cancelledAt: quizAttempts.cancelledAt,
+      cancellationReason:
+        quizAttempts.cancellationReason,
+
       score: quizAttempts.score,
 
       quizId: quizzes.id,
@@ -1426,6 +1764,9 @@ export async function getQuizAttemptResult(
 
       startedAt: attempt.startedAt,
       submittedAt: attempt.submittedAt,
+
+      cancelledAt: attempt.cancelledAt,
+      cancellationReason: attempt.cancellationReason,
 
       score,
       totalMarks,

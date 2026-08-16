@@ -30,6 +30,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 
 type ManualQuizFormValues = z.infer<typeof manualQuizSchema>;
+type QuestionType = "mcq" | "boolean";
+type OptionId = "a" | "b" | "c" | "d";
 
 interface ListQuestionCardProps {
   index: number;
@@ -38,42 +40,47 @@ interface ListQuestionCardProps {
   removeQuestion: (index: number) => void;
 }
 
+// Create options for a given question type.
+const createOptions = (type: QuestionType) =>
+  type === "mcq"
+    ? [
+        { id: "a" as const, text: "" },
+        { id: "b" as const, text: "" },
+        { id: "c" as const, text: "" },
+        { id: "d" as const, text: "" },
+      ]
+    : [
+        { id: "a" as const, text: "True" },
+        { id: "b" as const, text: "False" },
+      ];
+
 export const ListQuestionCard = memo(function ListQuestionCard({
   index,
   control,
   setValue,
   removeQuestion,
 }: ListQuestionCardProps) {
+  // State to handle collapsible open/closed state.
   const [isOpen, setIsOpen] = useState(true);
 
+  // Field array to handle options for each question.
   const { fields: optionFields, replace: replaceOptions } = useFieldArray({
     control,
     name: `questions.${index}.options`,
     keyName: "_key",
   });
 
+  // Handle question type change.
   const handleTypeChange = useCallback(
-    (value: "mcq" | "boolean") => {
-      replaceOptions(
-        value === "mcq"
-          ? [
-              { id: "a", text: "" },
-              { id: "b", text: "" },
-              { id: "c", text: "" },
-              { id: "d", text: "" },
-            ]
-          : [
-              { id: "a", text: "True" },
-              { id: "b", text: "False" },
-            ],
-      );
+    (type: QuestionType) => {
+      replaceOptions(createOptions(type));
 
       setValue(`questions.${index}.correctOption`, "a", {
         shouldDirty: true,
         shouldValidate: true,
       });
 
-      setValue(`questions.${index}.type`, value, {
+      setValue(`questions.${index}.type`, type, {
         shouldDirty: true,
         shouldValidate: true,
       });
@@ -81,17 +88,19 @@ export const ListQuestionCard = memo(function ListQuestionCard({
     [index, replaceOptions, setValue],
   );
 
+  // Handle question removal.
   const handleRemove = useCallback(
     () => removeQuestion(index),
     [index, removeQuestion],
   );
 
+  // Render the question card.
   return (
     <Card className="w-full">
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <CardTitle className="flex items-center gap-2 text-base font-medium">
-            <span>Question {index + 1}</span>
+            Question {index + 1}
           </CardTitle>
 
           <div className="flex gap-2">
@@ -126,6 +135,7 @@ export const ListQuestionCard = memo(function ListQuestionCard({
           </div>
         </CardHeader>
 
+        {/* Collapsed question summary */}
         {!isOpen && (
           <div className="px-6 pb-5">
             <Controller
@@ -142,7 +152,9 @@ export const ListQuestionCard = memo(function ListQuestionCard({
 
         <CollapsibleContent>
           <CardContent className="space-y-5 pt-5">
+            {/* Question type and marks */}
             <div className="flex flex-row justify-between gap-4">
+              {/* Question type */}
               <Controller
                 name={`questions.${index}.type`}
                 control={control}
@@ -153,7 +165,7 @@ export const ListQuestionCard = memo(function ListQuestionCard({
                     <Select
                       value={field.value}
                       onValueChange={(value) =>
-                        handleTypeChange(value as "mcq" | "boolean")
+                        handleTypeChange(value as QuestionType)
                       }
                     >
                       <SelectTrigger className="min-h-11 max-w-50">
@@ -177,6 +189,7 @@ export const ListQuestionCard = memo(function ListQuestionCard({
                 )}
               />
 
+              {/* Question marks */}
               <Controller
                 name={`questions.${index}.marks`}
                 control={control}
@@ -202,13 +215,16 @@ export const ListQuestionCard = memo(function ListQuestionCard({
               />
             </div>
 
+            {/* Question text */}
             <Controller
               name={`questions.${index}.question`}
               control={control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
                   <FieldLabel>Question</FieldLabel>
+
                   <Input {...field} placeholder="Enter your question..." />
+
                   <FieldError
                     errors={fieldState.error ? [fieldState.error] : []}
                   />
@@ -216,6 +232,7 @@ export const ListQuestionCard = memo(function ListQuestionCard({
               )}
             />
 
+            {/* Options */}
             <Controller
               name={`questions.${index}.correctOption`}
               control={control}
@@ -234,7 +251,7 @@ export const ListQuestionCard = memo(function ListQuestionCard({
                         control={control}
                         questionIndex={index}
                         optionIndex={optionIndex}
-                        optionId={optionField.id}
+                        optionId={optionField.id as OptionId}
                         optionLabel={String.fromCharCode(65 + optionIndex)}
                       />
                     ))}
@@ -257,10 +274,11 @@ interface OptionFieldProps {
   control: Control<ManualQuizFormValues>;
   questionIndex: number;
   optionIndex: number;
-  optionId: "a" | "b" | "c" | "d";
+  optionId: OptionId;
   optionLabel: string;
 }
 
+// Render a single editable answer option with its selection control.
 const OptionField = memo(function OptionField({
   control,
   questionIndex,
@@ -270,7 +288,7 @@ const OptionField = memo(function OptionField({
 }: OptionFieldProps) {
   return (
     <Controller
-      name={`questions.${questionIndex}.options.${optionIndex}.text` as const}
+      name={`questions.${questionIndex}.options.${optionIndex}.text`}
       control={control}
       render={({ field, fieldState }) => (
         <Field
@@ -292,6 +310,7 @@ const OptionField = memo(function OptionField({
 
           <div className="flex-1">
             <Input {...field} placeholder={`Option ${optionLabel}`} />
+
             <FieldError errors={fieldState.error ? [fieldState.error] : []} />
           </div>
         </Field>

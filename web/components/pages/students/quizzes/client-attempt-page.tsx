@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import {
   attemptQuizStudent,
+  cancelQuizAttempt,
   submitQuizAttempt,
 } from "@/lib/actions/quizzes.action";
 import { Badge } from "@/components/ui/badge";
@@ -29,41 +30,24 @@ const ClientAttemptPage = ({
   batchId: string;
   quizId: string;
 }) => {
+  // Initialize router
   const router = useRouter();
 
-  /**
-   * Quiz data does not exist until the student clicks
-   * "I Understand — Start Quiz".
-   */
+  // Local States
   const [data, setData] = useState<AttemptQuizData | null>(null);
-
-  const [started, setStarted] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   const [expiresAt, setExpiresAt] = useState<number | null>(null);
-
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Answers>({});
 
-  /**
-   * Keeps the latest answers available to callbacks/effects
-   * without forcing the timer effect to restart whenever
-   * an answer changes.
-   */
+  // Keep the latest answers and submission status available inside callbacks and effects.
   const answersRef = useRef<Answers>({});
-
-  /**
-   * Prevents both manual and automatic submission
-   * from submitting more than once.
-   */
   const hasSubmittedRef = useRef(false);
 
-  /**
-   * Questions only exist after the quiz has actually started.
-   */
+  // Derive computed values
   const questions = data?.questions ?? [];
 
   const visibleQuestions = questions.slice(
@@ -77,175 +61,88 @@ const ClientAttemptPage = ({
     questions.length > 0 &&
     currentQuestionIndex + QUESTIONS_PER_PAGE >= questions.length;
 
-  /**
-   * ---------------------------------------------------------
-   * Start Quiz
-   * ---------------------------------------------------------
-   *
-   * This is the ONLY place where attemptQuizStudent() is called.
-   *
-   * Therefore:
-   *
-   * Page load
-   *   -> no attempt
-   *   -> no questions
-   *
-   * Start button
-   *   -> create attempt
-   *   -> fetch questions
-   *   -> start timer
-   */
+  // Start the quiz attempt and enter fullscreen mode.
   const handleStartQuiz = useCallback(async () => {
-    if (started || isStarting) {
+    if (data || isStarting) {
       return;
     }
 
     setIsStarting(true);
 
     try {
+      // Create a new student quiz attempt on the server.
       const result = await attemptQuizStudent(batchId, quizId);
 
-      /**
-       * This should normally only happen if something changed
-       * between the initial validation and clicking Start.
-       *
-       * For example, another tab may have created the attempt.
-       */
       if (!result.success || !result.data) {
-        console.error(result.error ?? "Unable to start quiz.", result.message);
-
+        toast.error(result.error ?? "Unable to start quiz.");
         return;
       }
 
-      /**
-       * Store the complete attempt data returned by the server.
-       */
-      setData(result.data);
+      // Store the attempt data and initialize the countdown timer.
+      const attemptData = result.data;
+      const expirationTime = new Date(attemptData.attempt.expiresAt).getTime();
 
-      /**
-       * The server is authoritative for the expiration time.
-       */
-      const expiresAtMs = new Date(result.data.attempt.expiresAt).getTime();
-
-      setExpiresAt(expiresAtMs);
-
-      const remaining = Math.max(
-        0,
-        Math.ceil((expiresAtMs - Date.now()) / 1000),
+      setData(attemptData);
+      setExpiresAt(expirationTime);
+      setRemainingSeconds(
+        Math.max(0, Math.ceil((expirationTime - Date.now()) / 1000)),
       );
 
-      setRemainingSeconds(remaining);
-
-      /**
-       * Try to enter fullscreen.
-       *
-       * Failure to enter fullscreen does not prevent
-       * the quiz from starting.
-       */
+      // Request fullscreen mode for the active quiz session.
       try {
         await document.documentElement.requestFullscreen();
       } catch (error) {
         console.error("Unable to enter fullscreen:", error);
       }
-
-      setStarted(true);
     } catch (error) {
       console.error("Unable to start quiz:", error);
     } finally {
       setIsStarting(false);
     }
-  }, [batchId, quizId, started, isStarting]);
+  }, [batchId, quizId, data, isStarting]);
 
-  /**
-   * ---------------------------------------------------------
-   * Cancel before quiz starts
-   * ---------------------------------------------------------
-   *
-   * Since attemptQuizStudent() has not been called yet,
-   * cancelling here creates NO quiz attempt.
-   */
-  const handleCancelQuiz = useCallback(async () => {
-    if (isCancelling) {
-      return;
-    }
-
-    setIsCancelling(true);
-
-    try {
-      if (document.fullscreenElement) {
-        await document.exitFullscreen();
-      }
-    } catch (error) {
-      console.error("Unable to exit fullscreen:", error);
-    }
-
-    router.back();
-  }, [isCancelling, router]);
-
-  /**
-   * ---------------------------------------------------------
-   * Answer change
-   * ---------------------------------------------------------
-   */
+  // Update the selected answer for a specific question.
   const handleAnswerChange = useCallback(
     (questionId: string, answerId: string) => {
       setAnswers((previous) => {
-        const nextAnswers = {
+        const next = {
           ...previous,
           [questionId]: answerId,
         };
 
-        answersRef.current = nextAnswers;
+        // Keep the latest answer state available through the ref.
+        answersRef.current = next;
 
-        return nextAnswers;
+        return next;
       });
     },
     [],
   );
 
-  /**
-   * ---------------------------------------------------------
-   * Previous page
-   * ---------------------------------------------------------
-   */
+  // Move to the previous page of questions.
   const handlePrevious = useCallback(() => {
-    setCurrentQuestionIndex((previousIndex) =>
-      Math.max(previousIndex - QUESTIONS_PER_PAGE, 0),
-    );
+    setCurrentQuestionIndex((index) => Math.max(index - QUESTIONS_PER_PAGE, 0));
   }, []);
 
-  /**
-   * ---------------------------------------------------------
-   * Next page
-   * ---------------------------------------------------------
-   */
+  // Move to the next page of questions.
   const handleNext = useCallback(() => {
-    setCurrentQuestionIndex((previousIndex) => {
-      const nextPageStart = previousIndex + QUESTIONS_PER_PAGE;
+    setCurrentQuestionIndex((index) => {
+      const nextIndex = index + QUESTIONS_PER_PAGE;
 
-      return nextPageStart < questions.length ? nextPageStart : previousIndex;
+      return nextIndex < questions.length ? nextIndex : index;
     });
   }, [questions.length]);
 
-  /**
-   * ---------------------------------------------------------
-   * Question navigation
-   * ---------------------------------------------------------
-   */
+  // Navigate to a specific question page (for the rigth-sidebar pagination).
   const handleQuestionNavigate = useCallback((questionIndex: number) => {
-    const pageStart =
-      Math.floor(questionIndex / QUESTIONS_PER_PAGE) * QUESTIONS_PER_PAGE;
-
-    setCurrentQuestionIndex(pageStart);
+    setCurrentQuestionIndex(
+      Math.floor(questionIndex / QUESTIONS_PER_PAGE) * QUESTIONS_PER_PAGE,
+    );
   }, []);
 
-  /**
-   * ---------------------------------------------------------
-   * Submit Quiz
-   * ---------------------------------------------------------
-   */
+  // Submit the quiz and navigate to the results page.
   const handleSubmitQuiz = useCallback(async () => {
-    if (hasSubmittedRef.current || !data) {
+    if (!data || hasSubmittedRef.current) {
       return;
     }
 
@@ -253,31 +150,31 @@ const ClientAttemptPage = ({
     setIsSubmitting(true);
 
     try {
+      // Prepare the submission payload with the current answers.
       const submission = {
         batchId,
         attemptId: data.attempt.id,
         answers: data.questions.map((question) => ({
           questionId: question.id,
-          selectedOption: answersRef.current[question.id] as
-            | "a"
-            | "b"
-            | "c"
-            | "d"
-            | null,
+          selectedOption:
+            (answersRef.current[question.id] as
+              | "a"
+              | "b"
+              | "c"
+              | "d"
+              | undefined) ?? null,
         })),
       };
 
+      // Submit the completed quiz attempt to the server.
       const result = await submitQuizAttempt(submission);
 
       if (!result.success) {
-        toast.error("Failed to submit quiz. Please try again.");
-
+        hasSubmittedRef.current = false;
+        toast.error("Failed to submit quiz.");
         return;
       }
 
-      /**
-       * Exit fullscreen after successful submission.
-       */
       if (document.fullscreenElement) {
         try {
           await document.exitFullscreen();
@@ -286,77 +183,106 @@ const ClientAttemptPage = ({
         }
       }
 
+      // Navigate to the student's quiz result page.
       router.push(
         `/student/my-courses/${batchId}/quizzes/result/${data.attempt.id}`,
       );
     } catch (error) {
-      console.error("Unable to submit quiz:", error);
-
-      /**
-       * Allow the student to try again if submission
-       * failed because of a network/server error.
-       */
       hasSubmittedRef.current = false;
+      console.error("Unable to submit quiz:", error);
+      toast.error("Failed to submit quiz. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
-  }, [data, batchId, router]);
+  }, [batchId, data, router]);
 
-  /**
-   * ---------------------------------------------------------
-   * Quiz Timer
-   * ---------------------------------------------------------
-   *
-   * This effect does NOT depend on answers.
-   *
-   * Therefore changing an answer does not recreate
-   * the timer interval.
-   */
-  useEffect(() => {
-    if (!started || expiresAt === null) {
+  const handleCancelQuiz = useCallback(async () => {
+    // Prevent multiple cancellation requests.
+    if (!data || isCancelling) {
       return;
     }
 
-    const updateTimer = () => {
-      const remainingMilliseconds = expiresAt - Date.now();
+    setIsCancelling(true);
 
-      const remaining = Math.max(0, Math.ceil(remainingMilliseconds / 1000));
+    try {
+      const cancellationReason = "Quiz cancelled by student.";
+
+      const cancellationPayload = {
+        batchId,
+        attemptId: data.attempt.id,
+
+        cancellationReason,
+
+        answers: data.questions.map((question) => ({
+          questionId: question.id,
+          selectedOption:
+            (answersRef.current[question.id] as
+              | "a"
+              | "b"
+              | "c"
+              | "d"
+              | undefined) ?? null,
+        })),
+      };
+
+      // Cancel the attempt and save the student's current progress.
+      const result = await cancelQuizAttempt(cancellationPayload);
+
+      if (!result.success) {
+        toast.error("Failed to cancel quiz.");
+        return;
+      }
+
+      // Exit fullscreen mode before leaving the quiz.
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      }
+
+      // Navigate to the student's quiz result page.
+      router.push(
+        `/student/my-courses/${batchId}/quizzes/result/${data.attempt.id}`,
+      );
+    } catch (error) {
+      console.error("Unable to cancel quiz attempt:", error);
+
+      // Allow the user to try again if the
+      // cancellation request failed.
+      setIsCancelling(false);
+    }
+  }, [isCancelling, batchId, data, router]);
+
+  // Keep the quiz countdown synchronized with its expiration time.
+  useEffect(() => {
+    if (expiresAt === null) {
+      return;
+    }
+
+    // Calculate the remaining time and automatically submit when it reaches zero.
+    const updateTimer = () => {
+      const remaining = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
 
       setRemainingSeconds(remaining);
 
-      if (remaining <= 0) {
+      if (remaining === 0) {
         void handleSubmitQuiz();
       }
     };
 
+    // Update the timer immediately before starting the interval.
     updateTimer();
 
+    // Set up the interval for periodic countdown updates.
     const intervalId = window.setInterval(updateTimer, 1000);
 
-    return () => {
-      window.clearInterval(intervalId);
-    };
-  }, [started, expiresAt, handleSubmitQuiz]);
+    // Clean up the interval on unmount or before re-running the effect.
+    return () => window.clearInterval(intervalId);
+  }, [expiresAt, handleSubmitQuiz]);
 
-  /**
-   * ---------------------------------------------------------
-   * Instructions screen
-   * ---------------------------------------------------------
-   *
-   * At this point:
-   *
-   * data === null
-   * questions === []
-   * attempt does not exist
-   *
-   * until the student clicks Start.
-   */
-  if (!started || !data) {
+  // Display the "Start Quiz" modal until the student begins the attempt.
+  if (!data) {
     return (
       <div className="fixed inset-0 flex min-h-screen items-center justify-center bg-background">
         <StartQuizInstructionsDialog
-          batchId={batchId}
-          quizId={quizId}
           handleStartQuiz={handleStartQuiz}
           handleCancelQuiz={handleCancelQuiz}
           isStarting={isStarting}
@@ -365,11 +291,6 @@ const ClientAttemptPage = ({
     );
   }
 
-  /**
-   * ---------------------------------------------------------
-   * Quiz UI
-   * ---------------------------------------------------------
-   */
   return (
     <div className="fixed inset-0 z-50 flex h-screen w-screen flex-col bg-background">
       <header className="flex h-16 shrink-0 items-center justify-between border-b px-6">
@@ -418,6 +339,7 @@ const ClientAttemptPage = ({
 
         <div className="flex gap-3">
           <Button
+            type="button"
             variant="outline"
             onClick={handlePrevious}
             disabled={isFirstPage || isSubmitting}
@@ -426,11 +348,15 @@ const ClientAttemptPage = ({
           </Button>
 
           {isLastPage ? (
-            <Button onClick={handleSubmitQuiz} disabled={isSubmitting}>
+            <Button
+              type="button"
+              onClick={handleSubmitQuiz}
+              disabled={isSubmitting}
+            >
               {isSubmitting ? "Submitting..." : "Submit Quiz"}
             </Button>
           ) : (
-            <Button onClick={handleNext} disabled={isSubmitting}>
+            <Button type="button" onClick={handleNext} disabled={isSubmitting}>
               Next
             </Button>
           )}

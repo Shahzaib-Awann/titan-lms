@@ -1,8 +1,18 @@
+import "server-only";
+
 import { ChatGroq } from "@langchain/groq";
-import { aiQuizResponseSchema } from "@/lib/zod/trainer.schema";
-import z from "zod";
+import { z } from "zod";
+
+import {
+  aiQuizResponseSchema,
+  generateAiQuizSchema,
+} from "@/lib/zod/trainer.schema";
 
 export type AiQuizResponse = z.infer<typeof aiQuizResponseSchema>;
+
+type GenerateQuizQuestionsInput = z.infer<
+  typeof generateAiQuizSchema
+>;
 
 const model = new ChatGroq({
   apiKey: process.env.GROQ_API_KEY,
@@ -14,53 +24,98 @@ const structuredModel = model.withStructuredOutput(
   aiQuizResponseSchema,
 );
 
-export async function generateQuizQuestions({
-  prompt,
-  questionCount,
-  difficulty,
-}: {
-  prompt: string;
-  questionCount: number;
-  difficulty: "easy" | "medium" | "hard";
-}): Promise<AiQuizResponse> {
-  const response = await structuredModel.invoke([
-    [
-      "system",
-      `
+const SYSTEM_PROMPT = `
 You are an expert educational quiz generator.
 
-Generate high-quality quiz questions based ONLY on the trainer's requested topic.
+Generate high-quality quiz questions based only on the trainer's requested topic.
 
-Rules:
+Requirements:
+- Generate exactly the requested number of questions.
+- Match the requested difficulty.
+- Keep every question clear, accurate, and educational.
+- Avoid duplicate or nearly duplicate questions.
+- Use both MCQ and boolean questions when appropriate.
+- MCQ questions must have exactly four options: a, b, c, d.
+- Boolean questions must have exactly two options: a = True and b = False.
+- correctOption must identify the correct answer.
+- Do not include explanations.
+- Do not include markdown.
+- Do not include information unrelated to the requested topic.
+- Return only the structured quiz response.
+`.trim();
 
-1. Generate exactly the requested number of questions.
-2. Difficulty must match the requested difficulty.
-3. Questions must be clear and educational.
-4. Avoid duplicate or nearly duplicate questions.
-5. Use a mixture of MCQ and boolean questions when appropriate.
-6. Every MCQ must have exactly four options.
-7. Every boolean question must have exactly two options:
-   - a = True
-   - b = False
-8. correctOption must always contain the correct answer.
-9. Each question must have marks = 1.
-10. Do not include explanations.
-11. Do not include markdown.
-12. Do not include anything outside the requested structured response.
-      `,
-    ],
-    [
-      "human",
-      `
-Generate ${questionCount} quiz questions.
+function validateAiQuizResponse(
+  response: AiQuizResponse,
+): AiQuizResponse {
+  if (response.questions.length === 0) {
+    throw new Error("AI generated no questions.");
+  }
 
-Difficulty: ${difficulty}
+  for (const question of response.questions) {
+    if (question.type === "boolean") {
+      const optionIds = question.options.map(
+        (option) => option.id,
+      );
 
-Trainer's topic/instructions:
-${prompt}
-      `,
-    ],
-  ]);
+      if (
+        question.options.length !== 2 ||
+        optionIds[0] !== "a" ||
+        optionIds[1] !== "b" ||
+        !["a", "b"].includes(question.correctOption)
+      ) {
+        throw new Error(
+          "AI generated an invalid boolean question.",
+        );
+      }
+
+      continue;
+    }
+
+    const optionIds = question.options.map(
+      (option) => option.id,
+    );
+
+    if (
+      question.options.length !== 4 ||
+      optionIds[0] !== "a" ||
+      optionIds[1] !== "b" ||
+      optionIds[2] !== "c" ||
+      optionIds[3] !== "d"
+    ) {
+      throw new Error(
+        "AI generated an invalid multiple-choice question.",
+      );
+    }
+  }
 
   return response;
+}
+
+export async function generateQuizQuestions(
+  input: GenerateQuizQuestionsInput,
+): Promise<AiQuizResponse> {
+  const { prompt, questionCount, difficulty } =
+    generateAiQuizSchema.parse(input);
+
+  const response = await structuredModel.invoke([
+    {
+      role: "system",
+      content: SYSTEM_PROMPT,
+    },
+    {
+      role: "user",
+      content: [
+        `Generate exactly ${questionCount} quiz questions.`,
+        `Difficulty: ${difficulty}.`,
+        "",
+        "Trainer's topic/instructions:",
+        prompt,
+      ].join("\n"),
+    },
+  ]);
+
+  const validatedResponse =
+    aiQuizResponseSchema.parse(response);
+
+  return validateAiQuizResponse(validatedResponse);
 }
