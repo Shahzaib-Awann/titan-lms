@@ -16,6 +16,13 @@ type GenerateQuizQuestionsInput = z.infer<
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
+console.log("===== GROQ DEBUG =====");
+console.log("exists:", !!GROQ_API_KEY);
+console.log("length:", GROQ_API_KEY?.length);
+console.log("prefix:", GROQ_API_KEY?.slice(0, 4));
+console.log("suffix:", GROQ_API_KEY?.slice(-4));
+console.log("======================");
+
 if (!GROQ_API_KEY) {
   throw new Error("GROQ_API_KEY is not defined.");
 }
