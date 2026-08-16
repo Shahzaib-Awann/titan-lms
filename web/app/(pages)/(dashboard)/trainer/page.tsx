@@ -11,6 +11,8 @@ import { BookOpen, CalendarDays, Clock, Layers3, Users } from "lucide-react";
 import Link from "next/link";
 import React from "react";
 
+export const dynamic = "force-dynamic";
+
 const TrainerDashboardPage = async () => {
   const [user, result, batchesResponse] = await Promise.all([
     getCurrentUser(),
