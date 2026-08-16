@@ -2,13 +2,7 @@ import { TrainerForm } from "@/components/forms/trainer-form";
 import { Button } from "@/components/ui/button";
 import { getTrainerForEdit } from "@/lib/actions/trainer.action";
 import { AlertTriangle, ArrowLeft } from "lucide-react";
-import type { Metadata } from "next";
 import Link from "next/link";
-
-export const metadata: Metadata = {
-  title: "Edit Trainer | Titan LMS",
-  description: "Edit trainer for Titan LMS.",
-};
 
 export default async function EditTrainerPage({
   params,

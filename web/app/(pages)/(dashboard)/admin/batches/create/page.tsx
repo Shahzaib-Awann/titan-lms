@@ -3,12 +3,6 @@ import {
   getActiveCoursesOptions,
   getActiveTrainerOptions,
 } from "@/lib/actions/batch.action";
-import type { Metadata } from "next";
-
-export const metadata: Metadata = {
-  title: "Create Batch | Titan LMS",
-  description: "Create a new batch for Titan LMS.",
-};
 
 export default async function CreateBatchPage() {
   const [trainers, courses] = await Promise.all([

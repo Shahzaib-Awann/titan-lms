@@ -1,11 +1,5 @@
 import { CourseForm } from "@/components/forms/course-form";
 import { getCourseForEdit } from "@/lib/actions/course.action";
-import type { Metadata } from "next";
-
-export const metadata: Metadata = {
-  title: "Edit Course | Titan LMS",
-  description: "Edit course for Titan LMS.",
-};
 
 export default async function EditCoursePage({
   params,

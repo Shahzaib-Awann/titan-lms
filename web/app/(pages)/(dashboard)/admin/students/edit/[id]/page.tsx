@@ -1,11 +1,5 @@
 import { StudentForm } from "@/components/forms/student-form";
 import { getStudentForEdit } from "@/lib/actions/student.action";
-import type { Metadata } from "next";
-
-export const metadata: Metadata = {
-  title: "Edit Student | Titan LMS",
-  description: "Edit student for Titan LMS.",
-};
 
 export default async function EditStudentPage({
   params,

@@ -1,10 +1,4 @@
 import { StudentForm } from "@/components/forms/student-form";
-import type { Metadata } from "next";
-
-export const metadata: Metadata = {
-  title: "Create Student | Titan LMS",
-  description: "Create a new student for Titan LMS.",
-};
 
 export default function CreateStudentPage() {
   return (

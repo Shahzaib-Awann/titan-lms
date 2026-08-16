@@ -1,10 +1,4 @@
 import { AdminForm } from "@/components/forms/admin-form";
-import type { Metadata } from "next";
-
-export const metadata: Metadata = {
-  title: "Create Admin | Titan LMS",
-  description: "Create a new administrator for Titan LMS.",
-};
 
 export default function CreateAdminPage() {
   return (

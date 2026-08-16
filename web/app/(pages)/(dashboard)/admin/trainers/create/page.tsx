@@ -1,10 +1,4 @@
 import { TrainerForm } from "@/components/forms/trainer-form";
-import type { Metadata } from "next";
-
-export const metadata: Metadata = {
-  title: "Create Trainer | Titan LMS",
-  description: "Create a new trainer for Titan LMS.",
-};
 
 export default function CreateTrainerPage() {
   return (
