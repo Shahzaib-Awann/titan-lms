@@ -2,7 +2,7 @@ import { DataTable } from "@/components/ui/data-table/data-table";
 import { columns } from "./columns";
 import { getStudents } from "@/lib/actions/student.action";
 
-export default async function DemoPage() {
+export default async function StudentsPage() {
   const data = await getStudents();
 
   return (

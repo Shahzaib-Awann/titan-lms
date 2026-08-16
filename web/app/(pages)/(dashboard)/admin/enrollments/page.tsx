@@ -1,8 +1,8 @@
 import {
   getCoursesWithBatchesForEnrollments,
   getStudentEnrollments,
-} from "@/lib/actions/enrollment.action"; // adjust path
-import EnrollmentClientPage from "../../../../../components/pages/admin/enrollments/enrollment-client-page";
+} from "@/lib/actions/enrollment.action";
+import EnrollmentClientPage from "@/components/pages/admin/enrollments/enrollment-client-page";
 import { Course } from "./create/page";
 
 const EnrollmentsPage = async () => {

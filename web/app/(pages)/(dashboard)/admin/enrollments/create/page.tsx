@@ -1,11 +1,5 @@
 import StudentEnrollmentForm from "@/components/forms/student-enrollment-form";
-import type { Metadata } from "next";
 import { getCoursesWithBatchesForEnrollments } from "@/lib/actions/enrollment.action";
-
-export const metadata: Metadata = {
-  title: "Create Students Enrollment | Titan LMS",
-  description: "Create a new students enrollment for Titan LMS.",
-};
 
 // --- Types & Interfaces ---
 export interface Schedule {

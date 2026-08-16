@@ -1,10 +1,4 @@
 import { AnnouncementForm } from "@/components/forms/announcement-form";
-import type { Metadata } from "next";
-
-export const metadata: Metadata = {
-  title: "Create Announcement | Titan LMS",
-  description: "Create a new announcement for Titan LMS.",
-};
 
 export default function CreateAnnouncementPage() {
   return (

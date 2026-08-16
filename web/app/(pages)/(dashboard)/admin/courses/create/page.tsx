@@ -1,10 +1,4 @@
 import { CourseForm } from "@/components/forms/course-form";
-import type { Metadata } from "next";
-
-export const metadata: Metadata = {
-  title: "Create Course | Titan LMS",
-  description: "Create a new course for Titan LMS.",
-};
 
 export default function CreateCoursePage() {
   return (

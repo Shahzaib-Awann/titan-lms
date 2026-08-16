@@ -4,12 +4,6 @@ import {
   getActiveTrainerOptions,
   getCourseBatchForEdit,
 } from "@/lib/actions/batch.action";
-import type { Metadata } from "next";
-
-export const metadata: Metadata = {
-  title: "Edit Course Batch | Titan LMS",
-  description: "Edit course batch for Titan LMS.",
-};
 
 type EditCourseBatchPageProps = {
   params: {

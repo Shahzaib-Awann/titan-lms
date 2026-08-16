@@ -1,11 +1,5 @@
 import { AdminForm } from "@/components/forms/admin-form";
 import { getAdminForEdit } from "@/lib/actions/admin.action";
-import type { Metadata } from "next";
-
-export const metadata: Metadata = {
-  title: "Edit Admin | Titan LMS",
-  description: "Edit administrator for Titan LMS.",
-};
 
 export default async function EditAdminPage({
   params,

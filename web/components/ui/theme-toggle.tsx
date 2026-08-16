@@ -29,48 +29,27 @@ export function ThemeToggle() {
 
         <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all duration-300 dark:rotate-0 dark:scale-100" />
 
-        <span className="sr-only">
-          Toggle theme
-        </span>
+        <span className="sr-only">Toggle theme</span>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent
-        align="end"
-        className="min-w-45"
-      >
-        <DropdownMenuItem
-          onClick={() => setTheme("light")}
-        >
+      <DropdownMenuContent align="end" className="min-w-45">
+        <DropdownMenuItem onClick={() => setTheme("light")}>
           <Sun className="mr-2 h-4 w-4" />
           Light
-          {theme === "light" && (
-            <span className="ml-auto text-primary">
-              ✓
-            </span>
-          )}
+          {theme === "light" && <span className="ml-auto text-primary">✓</span>}
         </DropdownMenuItem>
 
-        <DropdownMenuItem
-          onClick={() => setTheme("dark")}
-        >
+        <DropdownMenuItem onClick={() => setTheme("dark")}>
           <Moon className="mr-2 h-4 w-4" />
           Dark
-          {theme === "dark" && (
-            <span className="ml-auto text-primary">
-              ✓
-            </span>
-          )}
+          {theme === "dark" && <span className="ml-auto text-primary">✓</span>}
         </DropdownMenuItem>
 
-        <DropdownMenuItem
-          onClick={() => setTheme("system")}
-        >
+        <DropdownMenuItem onClick={() => setTheme("system")}>
           <Monitor className="mr-2 h-4 w-4" />
           System
           {theme === "system" && (
-            <span className="ml-auto text-primary">
-              ✓
-            </span>
+            <span className="ml-auto text-primary">✓</span>
           )}
         </DropdownMenuItem>
       </DropdownMenuContent>

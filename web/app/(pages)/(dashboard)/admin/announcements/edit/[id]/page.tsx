@@ -2,13 +2,7 @@ import { AnnouncementForm } from "@/components/forms/announcement-form";
 import { Button } from "@/components/ui/button";
 import { getAnnouncementByIdForEdit } from "@/lib/actions/announcements.action";
 import { AlertTriangle, ArrowLeft } from "lucide-react";
-import type { Metadata } from "next";
 import Link from "next/link";
-
-export const metadata: Metadata = {
-  title: "Edit Announcement | Titan LMS",
-  description: "Edit announcement for Titan LMS.",
-};
 
 export default async function EditAnnouncementPage({
   params,
