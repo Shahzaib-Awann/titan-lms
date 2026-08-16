@@ -9,12 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import {
-  BadgeCheckIcon,
-  BellIcon,
-  Loader2Icon,
-  LogOutIcon,
-} from "lucide-react";
+import { BadgeCheckIcon, Loader2Icon, LogOutIcon } from "lucide-react";
 import { useState } from "react";
 import { signOut } from "next-auth/react";
 
@@ -94,10 +89,6 @@ const UserAccountMenu = ({
           <DropdownMenuItem>
             <BadgeCheckIcon />
             Profile Settings
-          </DropdownMenuItem>
-          <DropdownMenuItem>
-            <BellIcon />
-            Notifications
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />

@@ -98,7 +98,7 @@ const BatchesPageContent = async ({
                                 ? "default"
                                 : "info"
                           }
-                          className="rounded-full uppercase tracking-wider"
+                          className="rounded-full text-[10px] uppercase tracking-wider"
                         >
                           {status}
                         </Badge>
