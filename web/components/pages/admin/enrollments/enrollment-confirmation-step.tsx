@@ -13,7 +13,6 @@ import {
   Calendar,
   Clock,
   DollarSign,
-  MapPin,
   User,
   Phone,
   Sparkles,
@@ -25,7 +24,7 @@ import {
   Course,
   StudentForEnrollmentList,
 } from "../../../../app/(pages)/(dashboard)/admin/enrollments/create/page";
-import { formatDay, formatDate, formatTime } from "@/lib/helpers/date-fns";
+import { formatDate } from "@/lib/helpers/date-fns";
 import { BatchScheduleItem } from "../../batch-schedule-item";
 
 interface EnrollmentConfirmationStepProps {
