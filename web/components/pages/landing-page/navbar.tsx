@@ -37,7 +37,7 @@ const Navbar = () => {
             />
           </div>
 
-          <span className="text-[16px] font-bold tracking-tight text-white">
+          <span className="text-[16px] font-bold tracking-tight text-foreground">
             Titan LMS
           </span>
         </Link>
@@ -48,7 +48,7 @@ const Navbar = () => {
             <Link
               key={item.label}
               href={item.href}
-              className="relative py-6 text-sm font-medium text-slate-400 transition-colors hover:text-white"
+              className="relative py-6 text-sm font-medium text-secondary-foreground transition-colors hover:text-foreground"
             >
               {item.label}
             </Link>
@@ -117,7 +117,7 @@ const Navbar = () => {
                 </Link>
 
                 <Button className="mt-2 h-11 rounded-full bg-linear-to-r from-[#6246ea] to-[#8b5cf6] font-semibold text-white shadow-[0_8px_25px_rgba(118,88,255,0.3)]">
-                  <Link href="/start-learning">Start learning</Link>
+                  <Link href="#">Start learning</Link>
                 </Button>
               </div>
             </SheetContent>
