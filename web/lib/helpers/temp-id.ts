@@ -1,3 +1,5 @@
+import { nanoid } from "nanoid";
+
 export const TEMP_ID_PREFIX = "temp-";
 
 
@@ -6,7 +8,7 @@ export const TEMP_ID_PREFIX = "temp-";
  * Used for client-side created records before database insertion.
  */
 export function createTempId(): string {
-  return `${TEMP_ID_PREFIX}${crypto.randomUUID()}`;
+  return `${TEMP_ID_PREFIX}${nanoid()}`;
 }
 
 

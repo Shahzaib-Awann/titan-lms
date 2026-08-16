@@ -33,11 +33,6 @@ const BatchLayoutTabNavigation = ({
       visibleTo: "both",
     },
     {
-      label: "Students",
-      href: `${basePath}/students`,
-      visibleTo: "trainer",
-    },
-    {
       label: "Assignments",
       href: `${basePath}/assignments`,
       visibleTo: "both",
@@ -50,7 +45,7 @@ const BatchLayoutTabNavigation = ({
     {
       label: "Attendance",
       href: `${basePath}/attendance`,
-      visibleTo: "trainer",
+      visibleTo: "student",
     },
   ];
 

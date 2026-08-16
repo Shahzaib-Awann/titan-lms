@@ -4,7 +4,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 
 type StatCard = {
   title: string;
-  value: number;
+  value: number | string;
   icon: LucideIcon;
   status: string;
   color: string;

@@ -39,6 +39,7 @@ yarn-error.log*
 
 # Migrations
 /lib/db/migrations
+/lib/db/seed
 
 # Uploads
 /public/uploads

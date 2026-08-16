@@ -93,7 +93,7 @@ const UserAccountMenu = ({
         <DropdownMenuGroup>
           <DropdownMenuItem>
             <BadgeCheckIcon />
-            Account
+            Profile Settings
           </DropdownMenuItem>
           <DropdownMenuItem>
             <BellIcon />

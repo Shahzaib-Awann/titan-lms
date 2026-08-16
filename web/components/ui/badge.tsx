@@ -64,7 +64,9 @@ const badgeVariants = cva(
 
         warning: ["bg-yellow/15", "text-yellow"].join(" "),
 
-        destructive: ["bg-red/15", "text-red"].join(" "),
+        destructive: ["bg-red/15", "text-red", "border border-red/50"].join(
+          " ",
+        ),
 
         info: ["bg-primary/15", "text-primary"].join(" "),
 

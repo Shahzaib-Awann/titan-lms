@@ -4,7 +4,7 @@ import { DataTable } from "@/components/ui/data-table/data-table";
 import {
   Assignment,
   columns,
-} from "@/app/(pages)/(dashboard)/trainer/batches/[batchId]/assignments/columns";
+} from "@/app/(pages)/(dashboard)/trainer/batches/[batchId]/(tab-navigation)/assignments/columns";
 
 interface AssignmentsTableProps {
   batchId: string;

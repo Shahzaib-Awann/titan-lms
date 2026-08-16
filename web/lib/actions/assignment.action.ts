@@ -19,7 +19,7 @@ import { AssignmentSubmissionFormSchema, AssignmentSubmissionGradingFormSchema, 
 import z, { ZodError } from "zod";
 import { requireRole, requireTrainer } from "./auth.action";
 import { revalidatePath } from "next/cache";
-import { Assignment } from "@/app/(pages)/(dashboard)/trainer/batches/[batchId]/assignments/columns";
+import { Assignment } from "@/app/(pages)/(dashboard)/trainer/batches/[batchId]/(tab-navigation)/assignments/columns";
 import { AssignmentStatus, AssignmentSubmissionStatus } from "@/types/common";
 import { notFound } from "next/navigation";
 

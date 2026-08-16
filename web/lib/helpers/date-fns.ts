@@ -6,12 +6,27 @@ import { differenceInCalendarDays, format, isValid, parse } from "date-fns";
  * @param {string | null} timeStr - Time value in HH:mm:ss format.
  * @returns {string} Formatted time or empty string if no value is provided.
  */
-export const formatTime = (timeStr: string | null) => {
-  if (!timeStr) return "";
+export const formatTime = (
+  value: string | number | null,
+  type: "time" | "timer" = "time",
+) => {
+  if (value === null || value === undefined) return "";
+
+  if (type === "timer") {
+    const totalSeconds = Number(value);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+
+    return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(
+      2,
+      "0",
+    )}`;
+  }
+
   try {
-    return format(parse(timeStr, "HH:mm:ss", new Date()), "h:mm a");
+    return format(parse(String(value), "HH:mm:ss", new Date()), "h:mm a");
   } catch {
-    return timeStr;
+    return String(value);
   }
 };
 
