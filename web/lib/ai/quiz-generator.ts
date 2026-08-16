@@ -1,6 +1,6 @@
 "use server";
 
-import { ChatGroq } from "@langchain/groq";
+import Groq from "groq-sdk";
 import { z } from "zod";
 
 import {
@@ -29,7 +29,7 @@ Requirements:
 - Do not include explanations.
 - Do not include markdown.
 - Do not include information unrelated to the requested topic.
-- Return only the structured quiz response.
+- Return ONLY valid JSON structured response.
 `.trim();
 
 function validateAiQuizResponse(response: AiQuizResponse): AiQuizResponse {
@@ -78,45 +78,47 @@ export async function generateQuizQuestions(
   const rawKey = process.env.GROQ_API_KEY || "";
   const GROQ_API_KEY = rawKey.replace(/^["']|["']$/g, "").trim();
 
-console.log("GROQ KEY CHECK:", {
-  length: rawKey.length,
-  startsWithGsk: rawKey.startsWith("gsk_"),
-  hasQuotes: rawKey.startsWith('"') || rawKey.startsWith("'"),
-  prefix: rawKey.slice(0, 5),
-});
-
   if (!GROQ_API_KEY || !GROQ_API_KEY.startsWith("gsk_")) {
     throw new Error(
       `Invalid GROQ_API_KEY. Key must start with 'gsk_'. Received prefix: '${GROQ_API_KEY.slice(0, 4)}'`,
     );
   }
 
-  const model = new ChatGroq({
+  // Initialize native Groq SDK client
+  const groq = new Groq({
     apiKey: GROQ_API_KEY,
-    model: "llama-3.3-70b-versatile",
-    temperature: 0.3,
   });
 
-  const structuredModel = model.withStructuredOutput(aiQuizResponseSchema);
+  const completion = await groq.chat.completions.create({
+    model: "llama-3.3-70b-versatile",
+    temperature: 0.3,
+    response_format: { type: "json_object" },
+    messages: [
+      {
+        role: "system",
+        content: SYSTEM_PROMPT,
+      },
+      {
+        role: "user",
+        content: [
+          `Generate exactly ${questionCount} quiz questions.`,
+          `Difficulty: ${difficulty}.`,
+          "",
+          "Trainer's topic/instructions:",
+          prompt,
+        ].join("\n"),
+      },
+    ],
+  });
 
-  const response = await structuredModel.invoke([
-    {
-      role: "system",
-      content: SYSTEM_PROMPT,
-    },
-    {
-      role: "user",
-      content: [
-        `Generate exactly ${questionCount} quiz questions.`,
-        `Difficulty: ${difficulty}.`,
-        "",
-        "Trainer's topic/instructions:",
-        prompt,
-      ].join("\n"),
-    },
-  ]);
+  const rawContent = completion.choices[0]?.message?.content;
 
-  const validatedResponse = aiQuizResponseSchema.parse(response);
+  if (!rawContent) {
+    throw new Error("Groq API returned an empty response.");
+  }
+
+  const parsedJson = JSON.parse(rawContent);
+  const validatedResponse = aiQuizResponseSchema.parse(parsedJson);
 
   return validateAiQuizResponse(validatedResponse);
 }
