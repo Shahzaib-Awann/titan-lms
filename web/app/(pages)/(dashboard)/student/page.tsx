@@ -11,6 +11,8 @@ import { BookOpen, Clock, Layers3, Users } from "lucide-react";
 import Link from "next/link";
 import React from "react";
 
+export const dynamic = "force-dynamic";
+
 const StudentDasboardPage = async () => {
   const [user, result, batchesResponse] = await Promise.all([
     getCurrentUser(),
