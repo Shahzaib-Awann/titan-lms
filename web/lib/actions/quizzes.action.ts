@@ -1786,33 +1786,6 @@ export async function getQuizAttemptResult(
   };
 }
 
-async function testGroqAuthentication() {
-  const key = process.env.GROQ_API_KEY;
-
-  if (!key) {
-    throw new Error("GROQ_API_KEY is missing");
-  }
-
-  const response = await fetch(
-    "https://api.groq.com/openai/v1/models",
-    {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${key}`,
-      },
-    },
-  );
-
-  const body = await response.text();
-
-  console.log("===== DIRECT GROQ TEST =====");
-  console.log("Status:", response.status);
-  console.log("Body:", body);
-  console.log("============================");
-
-  return response.status;
-}
-
 export async function generateAiQuiz(input: {
   batchId: string;
   prompt: string;
@@ -1820,11 +1793,10 @@ export async function generateAiQuiz(input: {
   difficulty: "easy" | "medium" | "hard";
 }) {
   try {
-    const user = await requireRole("trainer");
+
+    await requireRole("trainer");
 
     const parsed = generateAiQuizSchema.parse(input);
-
-     await testGroqAuthentication();
 
     const result = await generateQuizQuestions({
       prompt: parsed.prompt,
