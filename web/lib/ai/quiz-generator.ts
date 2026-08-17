@@ -7,6 +7,7 @@ import {
   aiQuizResponseSchema,
   generateAiQuizSchema,
 } from "@/lib/zod/trainer.schema";
+import { createCompletionWithModelFallback } from "./groq-fallback";
 
 export type AiQuizResponse = z.infer<typeof aiQuizResponseSchema>;
 
@@ -102,26 +103,26 @@ export async function generateQuizQuestions(
     apiKey: GROQ_API_KEY,
   });
 
-  const completion = await groq.chat.completions.create({
-    model: "llama-3.3-70b-versatile",
-    temperature: 0.3,
-    response_format: { type: "json_object" },
-    messages: [
-      {
-        role: "system",
-        content: SYSTEM_PROMPT,
-      },
-      {
-        role: "user",
-        content: [
-          `Generate exactly ${questionCount} quiz questions.`,
-          `Difficulty: ${difficulty}.`,
-          "",
-          "Trainer's topic/instructions:",
-          prompt,
-        ].join("\n"),
-      },
-    ],
+  // Execute using the reusable multi-model fallback wrapper
+  const { completion } = await createCompletionWithModelFallback({
+    groq,
+    params: {
+      temperature: 0.3,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        {
+          role: "user",
+          content: [
+            `Generate exactly ${questionCount} quiz questions.`,
+            `Difficulty: ${difficulty}.`,
+            "",
+            "Trainer's topic/instructions:",
+            prompt,
+          ].join("\n"),
+        },
+      ],
+    },
   });
 
   const rawContent = completion.choices[0]?.message?.content;
@@ -132,11 +133,14 @@ export async function generateQuizQuestions(
 
   const parsedJson = JSON.parse(rawContent);
 
-  // Fallback handler: normalize JSON if AI returns an array or uses an alternate root key
   let normalizedData = parsedJson;
   if (Array.isArray(parsedJson)) {
     normalizedData = { questions: parsedJson };
-  } else if (parsedJson && typeof parsedJson === "object" && !parsedJson.questions) {
+  } else if (
+    parsedJson &&
+    typeof parsedJson === "object" &&
+    !parsedJson.questions
+  ) {
     const arrayKey = Object.values(parsedJson).find(Array.isArray);
     if (arrayKey) {
       normalizedData = { questions: arrayKey };
