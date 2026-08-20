@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
 
 import {
   attemptQuizStudent,
@@ -17,11 +18,42 @@ import LeftQuizSection from "./left-quiz-section";
 import RightQuizSection from "./right-quiz-section";
 
 import type { AttemptQuizData } from "@/types/quizzes";
-import toast from "react-hot-toast";
 
 const QUESTIONS_PER_PAGE = 2;
+const MAX_WARNINGS = 3;
 
 type Answers = Record<string, string>;
+
+// Helper to format answers payload for API calls
+const formatAnswersPayload = (
+  questions: AttemptQuizData["questions"],
+  answers: Answers,
+) =>
+  questions.map((q) => ({
+    questionId: q.id,
+    selectedOption:
+      (answers[q.id] as "a" | "b" | "c" | "d" | undefined) ?? null,
+  }));
+
+// Helper to validate proctoring key violations
+const checkKeyViolation = (event: KeyboardEvent): string | null => {
+  const key = event.key.toLowerCase();
+  const isMod = event.ctrlKey || event.metaKey;
+
+  if (event.key === "Escape") return "Fullscreen exit was attempted.";
+  if (event.key === "Tab") {
+    if (event.altKey) return "Application switching was attempted.";
+    if (isMod) return "Browser tab switching was attempted.";
+    return "Tab switching was attempted.";
+  }
+  if (event.key === "F5" || (isMod && key === "r"))
+    return "Page refresh was attempted.";
+  if (event.key === "F11") return "Fullscreen toggle was attempted.";
+  if (isMod && ["l", "t", "n", "w"].includes(key))
+    return "Browser navigation was attempted.";
+
+  return null;
+};
 
 const ClientAttemptPage = ({
   batchId,
@@ -30,7 +62,6 @@ const ClientAttemptPage = ({
   batchId: string;
   quizId: string;
 }) => {
-  // Initialize router
   const router = useRouter();
 
   // Local States
@@ -42,35 +73,54 @@ const ClientAttemptPage = ({
   const [expiresAt, setExpiresAt] = useState<number | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Answers>({});
+  const [warningCount, setWarningCount] = useState(0);
 
-  // Keep the latest answers and submission status available inside callbacks and effects.
+  // Refs for callbacks & listeners
   const answersRef = useRef<Answers>({});
+  const warningCountRef = useRef(0);
   const hasSubmittedRef = useRef(false);
+  const isTerminatingRef = useRef(false);
+  const lastViolationAtRef = useRef(0);
+  const isIntentionallyExitingFullscreenRef = useRef(false);
 
-  // Derive computed values
+  // Keep refs synced with active state
+  useEffect(() => {
+    answersRef.current = answers;
+  }, [answers]);
+
+  useEffect(() => {
+    warningCountRef.current = warningCount;
+  }, [warningCount]);
+
+  // Derived Computed Values
   const questions = data?.questions ?? [];
-
   const visibleQuestions = questions.slice(
     currentQuestionIndex,
     currentQuestionIndex + QUESTIONS_PER_PAGE,
   );
-
   const isFirstPage = currentQuestionIndex === 0;
-
   const isLastPage =
     questions.length > 0 &&
     currentQuestionIndex + QUESTIONS_PER_PAGE >= questions.length;
 
-  // Start the quiz attempt and enter fullscreen mode.
-  const handleStartQuiz = useCallback(async () => {
-    if (data || isStarting) {
-      return;
+  // Safe exit from fullscreen without triggering violations
+  const exitFullscreenSafely = useCallback(async () => {
+    if (document.fullscreenElement) {
+      isIntentionallyExitingFullscreenRef.current = true;
+      try {
+        await document.exitFullscreen();
+      } catch (error) {
+        console.error("Unable to exit fullscreen:", error);
+      }
     }
+  }, []);
+
+  // Handlers
+  const handleStartQuiz = useCallback(async () => {
+    if (data || isStarting) return;
 
     setIsStarting(true);
-
     try {
-      // Create a new student quiz attempt on the server.
       const result = await attemptQuizStudent(batchId, quizId);
 
       if (!result.success || !result.data) {
@@ -78,7 +128,6 @@ const ClientAttemptPage = ({
         return;
       }
 
-      // Store the attempt data and initialize the countdown timer.
       const attemptData = result.data;
       const expirationTime = new Date(attemptData.attempt.expiresAt).getTime();
 
@@ -88,7 +137,6 @@ const ClientAttemptPage = ({
         Math.max(0, Math.ceil((expirationTime - Date.now()) / 1000)),
       );
 
-      // Request fullscreen mode for the active quiz session.
       try {
         await document.documentElement.requestFullscreen();
       } catch (error) {
@@ -101,72 +149,43 @@ const ClientAttemptPage = ({
     }
   }, [batchId, quizId, data, isStarting]);
 
-  // Update the selected answer for a specific question.
   const handleAnswerChange = useCallback(
     (questionId: string, answerId: string) => {
-      setAnswers((previous) => {
-        const next = {
-          ...previous,
-          [questionId]: answerId,
-        };
-
-        // Keep the latest answer state available through the ref.
-        answersRef.current = next;
-
-        return next;
-      });
+      setAnswers((prev) => ({ ...prev, [questionId]: answerId }));
     },
     [],
   );
 
-  // Move to the previous page of questions.
   const handlePrevious = useCallback(() => {
     setCurrentQuestionIndex((index) => Math.max(index - QUESTIONS_PER_PAGE, 0));
   }, []);
 
-  // Move to the next page of questions.
   const handleNext = useCallback(() => {
     setCurrentQuestionIndex((index) => {
       const nextIndex = index + QUESTIONS_PER_PAGE;
-
       return nextIndex < questions.length ? nextIndex : index;
     });
   }, [questions.length]);
 
-  // Navigate to a specific question page (for the rigth-sidebar pagination).
   const handleQuestionNavigate = useCallback((questionIndex: number) => {
     setCurrentQuestionIndex(
       Math.floor(questionIndex / QUESTIONS_PER_PAGE) * QUESTIONS_PER_PAGE,
     );
   }, []);
 
-  // Submit the quiz and navigate to the results page.
   const handleSubmitQuiz = useCallback(async () => {
-    if (!data || hasSubmittedRef.current) {
-      return;
-    }
+    if (!data || hasSubmittedRef.current) return;
 
     hasSubmittedRef.current = true;
     setIsSubmitting(true);
 
     try {
-      // Prepare the submission payload with the current answers.
       const submission = {
         batchId,
         attemptId: data.attempt.id,
-        answers: data.questions.map((question) => ({
-          questionId: question.id,
-          selectedOption:
-            (answersRef.current[question.id] as
-              | "a"
-              | "b"
-              | "c"
-              | "d"
-              | undefined) ?? null,
-        })),
+        answers: formatAnswersPayload(data.questions, answersRef.current),
       };
 
-      // Submit the completed quiz attempt to the server.
       const result = await submitQuizAttempt(submission);
 
       if (!result.success) {
@@ -175,15 +194,7 @@ const ClientAttemptPage = ({
         return;
       }
 
-      if (document.fullscreenElement) {
-        try {
-          await document.exitFullscreen();
-        } catch (error) {
-          console.error("Unable to exit fullscreen:", error);
-        }
-      }
-
-      // Navigate to the student's quiz result page.
+      await exitFullscreenSafely();
       router.push(
         `/student/my-courses/${batchId}/quizzes/result/${data.attempt.id}`,
       );
@@ -194,38 +205,22 @@ const ClientAttemptPage = ({
     } finally {
       setIsSubmitting(false);
     }
-  }, [batchId, data, router]);
+  }, [batchId, data, router, exitFullscreenSafely]);
 
   const handleCancelQuiz = useCallback(async () => {
-    // Prevent multiple cancellation requests.
-    if (!data || isCancelling) {
-      return;
-    }
+    if (!data || isCancelling) return;
 
     setIsCancelling(true);
 
     try {
-      const cancellationReason = "Quiz cancelled by student.";
-
       const cancellationPayload = {
         batchId,
         attemptId: data.attempt.id,
-
-        cancellationReason,
-
-        answers: data.questions.map((question) => ({
-          questionId: question.id,
-          selectedOption:
-            (answersRef.current[question.id] as
-              | "a"
-              | "b"
-              | "c"
-              | "d"
-              | undefined) ?? null,
-        })),
+        status: "cancelled" as const,
+        cancellationReason: "Quiz cancelled by student.",
+        answers: formatAnswersPayload(data.questions, answersRef.current),
       };
 
-      // Cancel the attempt and save the student's current progress.
       const result = await cancelQuizAttempt(cancellationPayload);
 
       if (!result.success) {
@@ -233,34 +228,80 @@ const ClientAttemptPage = ({
         return;
       }
 
-      // Exit fullscreen mode before leaving the quiz.
-      if (document.fullscreenElement) {
-        await document.exitFullscreen();
-      }
-
-      // Navigate to the student's quiz result page.
+      await exitFullscreenSafely();
       router.push(
         `/student/my-courses/${batchId}/quizzes/result/${data.attempt.id}`,
       );
     } catch (error) {
       console.error("Unable to cancel quiz attempt:", error);
-
-      // Allow the user to try again if the
-      // cancellation request failed.
       setIsCancelling(false);
     }
-  }, [isCancelling, batchId, data, router]);
+  }, [isCancelling, batchId, data, router, exitFullscreenSafely]);
 
-  // Keep the quiz countdown synchronized with its expiration time.
+  const registerViolation = useCallback(
+    async (reason: string) => {
+      if (!data || isTerminatingRef.current) return;
+
+      const now = Date.now();
+      if (now - lastViolationAtRef.current < 1500) return; // Throttle violations
+      lastViolationAtRef.current = now;
+
+      const nextWarningCount = Math.min(
+        warningCountRef.current + 1,
+        MAX_WARNINGS,
+      );
+      setWarningCount(nextWarningCount);
+
+      if (nextWarningCount < MAX_WARNINGS) {
+        toast.error(`Warning ${nextWarningCount}/${MAX_WARNINGS}: ${reason}`);
+        return;
+      }
+
+      // Max violations reached -> terminate attempt
+      isTerminatingRef.current = true;
+      setIsSubmitting(true);
+
+      try {
+        const cancellationPayload = {
+          batchId,
+          attemptId: data.attempt.id,
+          status: "cheated" as const,
+          cancellationReason: `Quiz automatically terminated after ${MAX_WARNINGS} proctoring violations.`,
+          answers: formatAnswersPayload(data.questions, answersRef.current),
+        };
+
+        const result = await cancelQuizAttempt(cancellationPayload);
+
+        if (!result.success) {
+          isTerminatingRef.current = false;
+          setIsSubmitting(false);
+          toast.error(
+            "Unable to automatically terminate the quiz. Please contact support.",
+          );
+          return;
+        }
+
+        await exitFullscreenSafely();
+        toast.error("Quiz terminated due to repeated violations.");
+        router.push(
+          `/student/my-courses/${batchId}/quizzes/result/${data.attempt.id}`,
+        );
+      } catch (error) {
+        console.error("Unable to terminate quiz:", error);
+        isTerminatingRef.current = false;
+        setIsSubmitting(false);
+        toast.error("Failed to terminate the quiz.");
+      }
+    },
+    [batchId, data, router, exitFullscreenSafely],
+  );
+
+  // Timer Countdown Effect
   useEffect(() => {
-    if (expiresAt === null) {
-      return;
-    }
+    if (expiresAt === null) return;
 
-    // Calculate the remaining time and automatically submit when it reaches zero.
     const updateTimer = () => {
       const remaining = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
-
       setRemainingSeconds(remaining);
 
       if (remaining === 0) {
@@ -268,23 +309,79 @@ const ClientAttemptPage = ({
       }
     };
 
-    // Update the timer immediately before starting the interval.
     updateTimer();
-
-    // Set up the interval for periodic countdown updates.
     const intervalId = window.setInterval(updateTimer, 1000);
-
-    // Clean up the interval on unmount or before re-running the effect.
     return () => window.clearInterval(intervalId);
   }, [expiresAt, handleSubmitQuiz]);
 
-  // Display the "Start Quiz" modal until the student begins the attempt.
+  // Proctoring Event Listeners
+  useEffect(() => {
+    if (!data) return;
+
+    const handleVisibilityChange = () => {
+      if (
+        document.visibilityState === "hidden" &&
+        !isTerminatingRef.current &&
+        !isIntentionallyExitingFullscreenRef.current
+      ) {
+        void registerViolation("You switched away from the quiz.");
+      }
+    };
+
+    const handleWindowBlur = () => {
+      if (
+        !isTerminatingRef.current &&
+        !isIntentionallyExitingFullscreenRef.current
+      ) {
+        void registerViolation("The quiz window lost focus.");
+      }
+    };
+
+    const handleFullscreenChange = () => {
+      if (
+        isTerminatingRef.current ||
+        isIntentionallyExitingFullscreenRef.current
+      )
+        return;
+
+      if (!document.fullscreenElement) {
+        void registerViolation("Fullscreen mode was exited.");
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (isTerminatingRef.current) return;
+
+      const violationReason = checkKeyViolation(event);
+      if (violationReason) {
+        event.preventDefault();
+        event.stopPropagation();
+        void registerViolation(violationReason);
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("blur", handleWindowBlur);
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    window.addEventListener("keydown", handleKeyDown, true);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("blur", handleWindowBlur);
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      window.removeEventListener("keydown", handleKeyDown, true);
+    };
+  }, [data, registerViolation]);
+
+  // Initial instruction dialog state
   if (!data) {
     return (
       <div className="fixed inset-0 flex min-h-screen items-center justify-center bg-background">
         <StartQuizInstructionsDialog
           handleStartQuiz={handleStartQuiz}
-          handleCancelQuiz={handleCancelQuiz}
+          handleCancelQuiz={() =>
+            router.push(`/student/my-courses/${batchId}/quizzes`)
+          }
           isStarting={isStarting}
         />
       </div>
@@ -296,16 +393,30 @@ const ClientAttemptPage = ({
       <header className="flex h-16 shrink-0 items-center justify-between border-b px-6">
         <div>
           <h1 className="text-lg font-semibold">{data.quiz.title}</h1>
-
           <p className="text-sm text-muted-foreground">Quiz ID: {quizId}</p>
         </div>
 
-        <Badge
-          className="rounded-md border px-4 py-4 text-sm font-medium"
-          variant={remainingSeconds <= 60 ? "destructive" : "secondary"}
-        >
-          {formatTime(remainingSeconds, "timer")}
-        </Badge>
+        <div className="flex items-center gap-3">
+          <Badge
+            className="rounded-md border px-4 py-4 text-sm font-medium"
+            variant={
+              warningCount >= MAX_WARNINGS - 1
+                ? "destructive"
+                : warningCount > 0
+                  ? "warning"
+                  : "secondary"
+            }
+          >
+            Warnings: {warningCount}/{MAX_WARNINGS}
+          </Badge>
+
+          <Badge
+            className="rounded-md border px-4 py-4 text-sm font-medium"
+            variant={remainingSeconds <= 60 ? "destructive" : "secondary"}
+          >
+            {formatTime(remainingSeconds, "timer")}
+          </Badge>
+        </div>
       </header>
 
       <main className="grid min-h-0 flex-1 grid-cols-4">
