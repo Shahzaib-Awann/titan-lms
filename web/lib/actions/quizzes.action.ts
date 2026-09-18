@@ -1237,6 +1237,7 @@ export async function cancelQuizAttempt(
   payload: {
     batchId: string;
     attemptId: string;
+    status: "cancelled" | "cheated";
     cancellationReason: string;
     answers: {
       questionId: string;
@@ -1244,6 +1245,7 @@ export async function cancelQuizAttempt(
     }[];
   },
 ) {
+
   const user = await getCurrentUser({ fresh: true });
 
   if (!user) {
@@ -1268,6 +1270,10 @@ export async function cancelQuizAttempt(
 
   if (!payload?.cancellationReason?.trim()) {
     throw new Error("Cancellation reason is required");
+  }
+
+  if (!payload?.status) {
+    throw new Error("Status is required");
   }
 
   if (!Array.isArray(payload.answers)) {
@@ -1471,7 +1477,7 @@ export async function cancelQuizAttempt(
     const updateResult = await tx
       .update(quizAttempts)
       .set({
-        status: "cancelled",
+        status: payload.status,
 
         cancelledAt,
 

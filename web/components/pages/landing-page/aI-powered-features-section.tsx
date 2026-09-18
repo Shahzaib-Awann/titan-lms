@@ -141,7 +141,7 @@ const AIPoweredFeaturesSection = () => {
           <div className="flex-1 mt-4 border-t border-border/50 bg-muted/20 p-6 sm:p-8 flex items-center justify-center relative overflow-hidden">
             {/* UI Mockup */}
             <div className="w-full max-w-sm rounded-xl border border-border/60 bg-background shadow-sm p-5 animate-in fade-in zoom-in duration-700 delay-300">
-              <p className="text-sm text-muted-foreground leading-relaxed">
+              <div className="text-sm text-muted-foreground leading-relaxed">
                 The virtual DOM is a programming concept where an ideal, or{" "}
                 <span className="bg-blue-500/20 text-blue-500 px-1 rounded cursor-pointer border border-blue-500/30 relative">
                   &quot;virtual&quot; representation
@@ -160,7 +160,7 @@ const AIPoweredFeaturesSection = () => {
                   </div>
                 </span>{" "}
                 of a UI is kept in memory.
-              </p>
+              </div>
             </div>
           </div>
         </Card>

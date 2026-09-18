@@ -69,15 +69,17 @@ const Navbar = () => {
 
           {/* Mobile Menu */}
           <Sheet>
-            <SheetTrigger>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-10 w-10  rounded-lg text-slate-300 hover:bg-white/10 hover:text-white md:hidden"
-              >
-                <Menu className="h-5 w-5" />
-                <span className="sr-only">Open menu</span>
-              </Button>
+            <SheetTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-10 w-10  rounded-lg text-slate-300 hover:bg-white/10 hover:text-white md:hidden"
+                />
+              }
+            >
+              <Menu className="h-5 w-5" />
+              <span className="sr-only">Open menu</span>
             </SheetTrigger>
 
             <SheetContent side="right" className="w-75">
