@@ -30,6 +30,7 @@ export const quizStatusEnum = mysqlEnum("quiz_status", ["draft", "published", "c
 export const quizQuestionTypeEnum = mysqlEnum("quiz_question_type", ["mcq", "boolean"]);
 export const quizOptionEnum = mysqlEnum("quiz_option", ["a", "b", "c", "d"]);
 export const quizAttemptStatusEnum = mysqlEnum("quiz_attempt_status", ["in_progress", "submitted", "cancelled", "cheated"]);
+export const attendanceStatusEnum = mysqlEnum("attendance_status", ["present", "absent", "leave"]);
 
 
 // Users table
@@ -418,3 +419,37 @@ export const quizAnswers = mysqlTable(
     unique("quiz_attempt_question_unique").on(table.attemptId, table.questionId),
   ],
 );
+
+// Student Attendance
+export const studentAttendance = mysqlTable("student_attendance", {
+  id: varchar("id", { length: 21 }).primaryKey(),
+  enrollmentId: varchar("enrollment_id", { length: 21 }).notNull().references(() => enrollments.id),
+  studentId: varchar("student_id", { length: 21 }).notNull().references(() => studentProfiles.id),
+
+  attendanceDate: date("attendance_date").notNull(),
+  status: attendanceStatusEnum.notNull().default("absent"),
+  markedBy: varchar("marked_by", { length: 21 }).references(() => users.id),
+
+  remarks: varchar("remarks", { length: 200 }),
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+  unique("student_batch_date_unique").on(table.studentId, table.enrollmentId, table.attendanceDate),
+]);
+
+// Trainer Attendance
+export const trainerAttendance = mysqlTable("trainer_attendance", {
+  id: varchar("id", { length: 21 }).primaryKey(),
+  trainerId: varchar("trainer_id", { length: 21 }).notNull().references(() => trainerProfiles.id),
+  batchId: varchar("batch_id", { length: 21 }).notNull().references(() => courseBatches.id),
+
+  attendanceDate: date("attendance_date").notNull(),
+  status: attendanceStatusEnum.notNull().default("absent"),
+  markedBy: varchar("marked_by", { length: 21 }).references(() => users.id),
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+  unique("trainer_date_unique").on(table.trainerId, table.attendanceDate),
+]);
