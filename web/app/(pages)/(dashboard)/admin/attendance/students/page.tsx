@@ -1,8 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { format } from "date-fns";
+import { CalendarIcon, ChevronDown, TriangleAlertIcon } from "lucide-react";
+import toast from "react-hot-toast";
+
 import { DataTable } from "@/components/ui/data-table/data-table";
-import { Attendance, columns } from "./columns";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -19,97 +30,199 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { CalendarIcon, ChevronDown } from "lucide-react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
+import { Badge } from "@/components/ui/badge";
+
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { formatDate } from "@/lib/helpers/date-fns";
+import {
+  getAllBatches,
+  getStudentAttendance,
+  updateAttendance,
+} from "@/lib/actions/attendance.action";
+import { AttendanceStatus } from "@/types/common";
+import { Attendance, columns } from "./columns";
+
+// Defines the shape of a batch returned from the server.
+type Batch = {
+  batchId: string;
+  batchName: string;
+  batchStatus: string;
+};
 
 export default function StudentAttendence() {
-  const [batch, setBatch] = useState("all");
-  const [selectedDate, setSelectedDate] = useState("");
+  // Local States
+  const [selectedBatchId, setSelectedBatchId] = useState("null");
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [searchInput, setSearchInput] = useState("");
+  const [batches, setBatches] = useState<Batch[]>([]);
+  const [attendance, setAttendance] = useState<Attendance[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const data: Attendance[] = [
-    {
-      id: 1,
-      student_id: "AI-12345",
-      student_name: "Shahzaib Awan",
-      last_marked: "8:00 AM",
-      batch: "AI & DS",
-      status: "present",
-    },
-    {
-      id: 2,
-      student_id: "2023-CS-043",
-      student_name: "Ayesha Khan",
-      last_marked: "9:00 AM",
-      batch: "AI & DS",
-      status: "present",
-    },
-    {
-      id: 3,
-      student_id: "2023-CS-044",
-      student_name: "Ali Raza",
-      last_marked: "10:00 AM",
-      batch: "Web Development",
-      status: "leave",
-    },
-    {
-      id: 4,
-      student_id: "2023-CS-045",
-      student_name: "Fatima Noor",
-      last_marked: "11:00 AM",
-      batch: "AI & DS",
-      status: "present",
-    },
-    {
-      id: 5,
-      student_id: "2023-CS-046",
-      student_name: "Hassan Ahmed",
-      last_marked: "12:00 AM",
-      batch: "Cyber Security",
-      status: "absent",
-    },
-  ];
+  // Fetches batches once when the component mounts.
+  useEffect(() => {
+    const fetchBatches = async () => {
+      try {
+        const result = await getAllBatches();
+        setBatches(result);
+      } catch (error) {
+        console.error("Failed to fetch batches:", error);
+        toast.error("Failed to fetch batches.");
+      }
+    };
 
-  const filteredData = data.filter((student) => {
-    return batch === "all" || student.batch === batch;
-  });
+    fetchBatches();
+  }, []);
+
+  // Fetches attendance based on the current filters.
+  const handleSearch = useCallback(async () => {
+    const search = searchInput.trim();
+
+    // Search mode allows searching with optional batch/date filters.
+    if (search) {
+      try {
+        setLoading(true);
+
+        const result = await getStudentAttendance({
+          search,
+          batchId: selectedBatchId !== "null" ? selectedBatchId : undefined,
+          attendanceDate: selectedDate || undefined,
+        });
+
+        setAttendance(result);
+      } catch (error) {
+        console.error("Failed to search attendance:", error);
+        setAttendance([]);
+        toast.error("Failed to fetch attendance.");
+      } finally {
+        setLoading(false);
+      }
+
+      return;
+    }
+
+    // Normal attendance mode requires a batch.
+    if (selectedBatchId === "null") {
+      toast("Please select a batch.", {
+        icon: <TriangleAlertIcon className="size-5 text-yellow-500" />,
+      });
+      return;
+    }
+
+    // Normal attendance mode also requires a date.
+    if (!selectedDate) {
+      toast("Please select an attendance date.", {
+        icon: <TriangleAlertIcon className="size-5 text-yellow-500" />,
+      });
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const result = await getStudentAttendance({
+        batchId: selectedBatchId,
+        attendanceDate: selectedDate,
+      });
+
+      setAttendance(result);
+    } catch (error) {
+      console.error("Failed to fetch attendance:", error);
+      setAttendance([]);
+      toast.error("Failed to fetch attendance.");
+    } finally {
+      setLoading(false);
+    }
+  }, [searchInput, selectedBatchId, selectedDate]);
+
+  // Updates the attendance status for all selected students.
+  const handleAttendanceChange = useCallback(
+    async (students: Attendance[], status: AttendanceStatus) => {
+      if (!students.length) return;
+
+      try {
+        // Updates all selected students concurrently.
+        await Promise.all(
+          students.map(({ id }) =>
+            updateAttendance({ type: "student", id, status }),
+          ),
+        );
+
+        // Refreshes the table using the current filters.
+        await handleSearch();
+      } catch (error) {
+        console.error("Failed to update attendance:", error);
+
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Failed to update attendance.",
+        );
+      }
+    },
+    [handleSearch],
+  );
+
+  // Finds the selected batch name without storing duplicate state.
+  const selectedBatchName = batches.find(
+    (batch) => batch.batchId === selectedBatchId,
+  )?.batchName;
 
   return (
-    <div className="container mx-auto py-10 space-y-5">
-      {/* Filters */}
-      <div className="flex gap-4 items-center">
-        {/* Batch Filter */}
+    <div className="container mx-auto space-y-5 py-10">
+      {/* Contains all attendance filters and search controls. */}
+      <div className="flex items-center gap-4">
+        {/* Student search input. */}
+        <Input
+          placeholder="Search student..."
+          value={searchInput}
+          onChange={(event) => setSearchInput(event.target.value)}
+          wrapperClassName="w-full max-w-sm"
+        />
+
+        {/* Batch selection filter. */}
         <Select
-          value={batch}
+          value={selectedBatchId}
           onValueChange={(value) => {
             if (value) {
-              setBatch(value);
+              setSelectedBatchId(value);
             }
           }}
         >
-          <SelectTrigger className="w-50" onClick={(e) => e.stopPropagation()}>
-            <SelectValue placeholder="Select Batch" />
+          <SelectTrigger className="min-h-11 min-w-60 bg-card disabled:opacity-50">
+            <SelectValue placeholder="Select a course first">
+              {selectedBatchId === "null" ? "Select Option" : selectedBatchName}
+            </SelectValue>
           </SelectTrigger>
 
-          <SelectContent>
-            <SelectItem value="all">All</SelectItem>
+          <SelectContent className="min-w-70">
+            {/* Default empty batch option. */}
+            <SelectItem value="null">Select Option</SelectItem>
 
-            <SelectItem value="AI & DS">AI & DS</SelectItem>
+            {/* Renders all available batches. */}
+            {batches.map((batch) => (
+              <SelectItem key={batch.batchId} value={batch.batchId}>
+                <div className="flex items-center gap-2">
+                  <span>{batch.batchName}</span>
 
-            <SelectItem value="Web Development">Web Development</SelectItem>
-
-            <SelectItem value="Cyber Security">Cyber Security</SelectItem>
+                  {/* Displays the current batch status. */}
+                  <Badge
+                    variant={
+                      batch.batchStatus === "live"
+                        ? "default"
+                        : batch.batchStatus === "upcoming"
+                          ? "secondary"
+                          : "outline"
+                    }
+                  >
+                    {batch.batchStatus}
+                  </Badge>
+                </div>
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
 
-        {/* Date Filter */}
+        {/* Attendance date picker. */}
         <Popover>
           <PopoverTrigger
             render={
@@ -122,34 +235,45 @@ export default function StudentAttendence() {
               />
             }
           >
-            <CalendarIcon className="mr-2 h-4 w-4" />
+            <CalendarIcon className="mr-2 size-4" />
 
-            {selectedDate ? (
-              format(selectedDate, "yyyy-MM-dd")
-            ) : (
-              <span>Select date</span>
-            )}
+            {selectedDate ? formatDate(selectedDate) : <span>Select date</span>}
           </PopoverTrigger>
 
-          <PopoverContent className="w-auto p-0">
+          <PopoverContent className="w-auto p-5">
+            {/* Calendar for selecting the attendance date. */}
             <Calendar
               mode="single"
-              selected={new Date(selectedDate)}
-              onSelect={(value) => {
-                if (value) {
-                  setSelectedDate(format(value, "yyyy-MM-dd"));
+              className="border-none p-0 shadow-none"
+              selected={selectedDate ? new Date(selectedDate) : undefined}
+              onSelect={(date) => {
+                if (date) {
+                  setSelectedDate(format(date, "yyyy-MM-dd"));
                 }
               }}
             />
+
+            {/* Clears the currently selected date. */}
+            <Button variant="ghost" onClick={() => setSelectedDate(null)}>
+              Clear
+            </Button>
           </PopoverContent>
         </Popover>
+
+        {/* Executes the attendance search. */}
+        <Button onClick={handleSearch} disabled={loading}>
+          {loading ? "Searching..." : "Search"}
+        </Button>
       </div>
 
+      {/* Displays attendance records in the reusable data table. */}
       <DataTable
         columns={columns}
-        data={filteredData}
-        globalFilterColumns={["student_id", "student_name", "batch", "status"]}
+        data={attendance}
+        disableSearchBar
+        enableViewOptions={false}
         renderSelectedActions={(students) => (
+          // Provides bulk attendance actions for selected students.
           <DropdownMenu>
             <DropdownMenuTrigger render={<Button />}>
               Mark Attendance <ChevronDown />
@@ -157,33 +281,31 @@ export default function StudentAttendence() {
 
             <DropdownMenuContent align="end">
               <DropdownMenuGroup>
+                {/* Shows how many students are selected. */}
                 <DropdownMenuLabel>
                   Actions ({students.length} selected)
                 </DropdownMenuLabel>
 
                 <DropdownMenuSeparator />
 
+                {/* Marks selected students as present. */}
                 <DropdownMenuItem
-                  onClick={() => {
-                    console.log("Mark Present:", students);
-                  }}
+                  onClick={() => handleAttendanceChange(students, "present")}
                 >
                   Mark Present
                 </DropdownMenuItem>
 
+                {/* Marks selected students as on leave. */}
                 <DropdownMenuItem
-                  onClick={() => {
-                    console.log("Mark Late:", students);
-                  }}
+                  onClick={() => handleAttendanceChange(students, "leave")}
                 >
-                  Mark Late
+                  Mark Leave
                 </DropdownMenuItem>
 
+                {/* Marks selected students as absent. */}
                 <DropdownMenuItem
                   variant="destructive"
-                  onClick={() => {
-                    console.log("Mark Absent:", students);
-                  }}
+                  onClick={() => handleAttendanceChange(students, "absent")}
                 >
                   Mark Absent
                 </DropdownMenuItem>
@@ -192,6 +314,13 @@ export default function StudentAttendence() {
           </DropdownMenu>
         )}
       />
+
+      {/* Displays an additional loading indicator below the table. */}
+      {loading && (
+        <div className="text-center text-sm text-muted-foreground">
+          Loading attendance...
+        </div>
+      )}
     </div>
   );
 }

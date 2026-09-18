@@ -1,15 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { DataTable } from "@/components/ui/data-table/data-table";
 import { TrainerAttendance, columns } from "./columns";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { CalendarIcon, ChevronDown } from "lucide-react";
+import { CalendarIcon, ChevronDown, TriangleAlertIcon } from "lucide-react";
 import {
   Popover,
   PopoverContent,
@@ -29,124 +22,169 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { formatDate } from "@/lib/helpers/date-fns";
+import { Input } from "@/components/ui/input";
+import toast from "react-hot-toast";
+import {
+  getTrainerAttendance,
+  updateAttendance,
+} from "@/lib/actions/attendance.action";
+import { AttendanceStatus } from "@/types/common";
 
 export default function TrainerAttendancePage() {
-  const [expertise, setExpertise] = useState("all");
-  const [selectedDate, setSelectedDate] = useState("");
+  // Local States
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [searchInput, setSearchInput] = useState("");
+  const [attendance, setAttendance] = useState<TrainerAttendance[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const data: TrainerAttendance[] = [
-    {
-      id: 1,
-      trainer_id: "TR-1001",
-      trainer_name: "Ahmed Raza",
-      expertise: "AI & DS",
-      last_marked: "8:30 AM",
-      status: "present",
-    },
-    {
-      id: 2,
-      trainer_id: "TR-1002",
-      trainer_name: "Sara Khan",
-      expertise: "Web Development",
-      last_marked: "9:00 AM",
-      status: "present",
-    },
-    {
-      id: 3,
-      trainer_id: "TR-1003",
-      trainer_name: "Usman Ali",
-      expertise: "Cyber Security",
-      last_marked: "10:00 AM",
-      status: "leave",
-    },
-    {
-      id: 4,
-      trainer_id: "TR-1004",
-      trainer_name: "Hina Malik",
-      expertise: "AI & DS",
-      last_marked: "11:00 AM",
-      status: "absent",
-    },
-  ];
+  // Fetches attendance based on the current filters.
+  const handleSearch = useCallback(async () => {
+    const search = searchInput.trim();
 
-  const filteredData = data.filter((trainer) => {
-    return expertise === "all" || trainer.expertise === expertise;
-  });
+    // Search mode allows searching with optional batch/date filters.
+    if (search) {
+      try {
+        setLoading(true);
+
+        const result = await getTrainerAttendance({
+          search,
+          attendanceDate: selectedDate || undefined,
+        });
+
+        setAttendance(result);
+      } catch (error) {
+        console.error("Failed to search attendance:", error);
+        setAttendance([]);
+        toast.error("Failed to fetch attendance.");
+      } finally {
+        setLoading(false);
+      }
+
+      return;
+    }
+
+    // Normal attendance mode also requires a date.
+    if (!selectedDate) {
+      toast("Please select an attendance date.", {
+        icon: <TriangleAlertIcon className="size-5 text-yellow-500" />,
+      });
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const result = await getTrainerAttendance({
+        attendanceDate: selectedDate,
+        search: undefined,
+      });
+
+      setAttendance(result);
+    } catch (error) {
+      console.error("Failed to fetch attendance:", error);
+      setAttendance([]);
+      toast.error("Failed to fetch attendance.");
+    } finally {
+      setLoading(false);
+    }
+  }, [searchInput, selectedDate]);
+
+  // Updates the attendance status for all selected trainers.
+  const handleAttendanceChange = useCallback(
+    async (trainers: TrainerAttendance[], status: AttendanceStatus) => {
+      if (!trainers.length) return;
+
+      try {
+        // Updates all selected trainers concurrently.
+        const result = await Promise.all(
+          trainers.map(({ id }) =>
+            updateAttendance({ type: "trainer", id, status }),
+          ),
+        );
+
+        // Refreshes the table using the current filters.
+        await handleSearch();
+
+        console.log(result);
+      } catch (error) {
+        console.error("Failed to update attendance:", error);
+
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Failed to update attendance.",
+        );
+      }
+    },
+    [handleSearch],
+  );
 
   return (
-    <div className="container mx-auto py-10 space-y-5">
-      {/* Filters */}
-      <div className="flex gap-4 items-center">
-        {/* expertise Filter */}
-        <Select
-          value={expertise}
-          onValueChange={(value) => {
-            if (value) {
-              setExpertise(value);
-            }
-          }}
-        >
-          <SelectTrigger className="w-50" onClick={(e) => e.stopPropagation()}>
-            <SelectValue placeholder="Select expertise" />
-          </SelectTrigger>
+    <div className="container mx-auto space-y-5 py-10">
+      {/* Contains all attendance filters and search controls. */}
+      <div className="flex items-center gap-4">
+        {/* Trainer search input. */}
+        <Input
+          placeholder="Search trainer..."
+          value={searchInput}
+          onChange={(event) => setSearchInput(event.target.value)}
+          wrapperClassName="w-full max-w-sm"
+        />
 
-          <SelectContent>
-            <SelectItem value="all">All</SelectItem>
-
-            <SelectItem value="AI & DS">AI & DS</SelectItem>
-
-            <SelectItem value="Web Development">Web Development</SelectItem>
-
-            <SelectItem value="Cyber Security">Cyber Security</SelectItem>
-          </SelectContent>
-        </Select>
-
-        {/* Date Filter */}
+        {/* Attendance date picker. */}
         <Popover>
           <PopoverTrigger
             render={
               <Button
                 variant="outline"
                 className={cn(
-                  "w-50 justify-start text-left font-normal",
+                  "w-50 justify-start bg-card text-left font-normal",
                   !selectedDate && "text-muted-foreground",
                 )}
               />
             }
           >
-            <CalendarIcon className="mr-2 h-4 w-4" />
+            <CalendarIcon className="mr-2 size-4" />
 
-            {selectedDate ? (
-              format(selectedDate, "yyyy-MM-dd")
-            ) : (
-              <span>Select date</span>
-            )}
+            {selectedDate ? formatDate(selectedDate) : <span>Select date</span>}
           </PopoverTrigger>
 
-          <PopoverContent className="w-auto p-0">
+          <PopoverContent className="w-auto p-5">
+            {/* Calendar for selecting the attendance date. */}
             <Calendar
               mode="single"
-              selected={new Date(selectedDate)}
-              onSelect={(value) => {
-                if (value) {
-                  setSelectedDate(format(value, "yyyy-MM-dd"));
+              className="border-none p-0 shadow-none"
+              selected={selectedDate ? new Date(selectedDate) : undefined}
+              onSelect={(date) => {
+                if (date) {
+                  setSelectedDate(format(date, "yyyy-MM-dd"));
                 }
               }}
             />
+
+            {/* Clears the currently selected date. */}
+            <Button variant="ghost" onClick={() => setSelectedDate(null)}>
+              Clear
+            </Button>
           </PopoverContent>
         </Popover>
+
+        {/* Executes the attendance search. */}
+        <Button onClick={handleSearch} disabled={loading}>
+          {loading ? "Searching..." : "Search"}
+        </Button>
       </div>
 
+      {/* Displays attendance records in the reusable data table. */}
       <DataTable
+        className={loading ? "opacity-75" : "opacity-100"}
         columns={columns}
-        data={filteredData}
-        globalFilterColumns={[
-          "trainer_id",
-          "trainer_name",
-          "expertise",
-          "status",
-        ]}
+        data={attendance}
+        disableSearchBar
+        enableViewOptions={false}
         renderSelectedActions={(trainers) => (
+          // Provides bulk attendance actions for selected trainers.
           <DropdownMenu>
             <DropdownMenuTrigger render={<Button />}>
               Mark Attendance <ChevronDown />
@@ -154,33 +192,31 @@ export default function TrainerAttendancePage() {
 
             <DropdownMenuContent align="end">
               <DropdownMenuGroup>
+                {/* Shows how many trainers are selected. */}
                 <DropdownMenuLabel>
                   Actions ({trainers.length} selected)
                 </DropdownMenuLabel>
 
                 <DropdownMenuSeparator />
 
+                {/* Marks selected trainers as present. */}
                 <DropdownMenuItem
-                  onClick={() => {
-                    console.log("Mark Present:", trainers);
-                  }}
+                  onClick={() => handleAttendanceChange(trainers, "present")}
                 >
                   Mark Present
                 </DropdownMenuItem>
 
+                {/* Marks selected trainers as on leave. */}
                 <DropdownMenuItem
-                  onClick={() => {
-                    console.log("Mark Late:", trainers);
-                  }}
+                  onClick={() => handleAttendanceChange(trainers, "leave")}
                 >
-                  Mark Late
+                  Mark Leave
                 </DropdownMenuItem>
 
+                {/* Marks selected trainers as absent. */}
                 <DropdownMenuItem
-                  className="text-destructive"
-                  onClick={() => {
-                    console.log("Mark Absent:", trainers);
-                  }}
+                  variant="destructive"
+                  onClick={() => handleAttendanceChange(trainers, "absent")}
                 >
                   Mark Absent
                 </DropdownMenuItem>

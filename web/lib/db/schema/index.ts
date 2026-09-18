@@ -11,27 +11,90 @@ import {
   time,
   unique,
   boolean,
-  foreignKey
+  foreignKey,
 } from "drizzle-orm/mysql-core";
 
 // Enums
 export const userRoleEnum = mysqlEnum("role", ["admin", "trainer", "student"]);
-export const userStatusEnum = mysqlEnum("status", ["active", "inactive", "suspended"]);
-export const assetExtensionEnum = mysqlEnum("extension", ["pdf", "mp4", "png", "jpg", "jpeg", "md"]);
-export const weekdayEnum = mysqlEnum("weekday", ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"]);
-export const moduleProgressStatusEnum = mysqlEnum("module_progress_status", ["not_started", "in_progress", "completed", "skipped"]);
-export const enrollmentStatusEnum = mysqlEnum("enrollment_status", ["active", "completed", "transferred", "dropped", "suspended"]);
-export const announcementAudienceEnum = mysqlEnum("target_audience", ["all", "trainers", "students"]);
-export const assignmentStatusEnum = mysqlEnum("assignment_status", ["draft","published","closed"]);
-export const assignmentSubmissionStatusEnum = mysqlEnum("assignment_submission_status", ["not_submitted","submitted","late","graded","resubmitted"]);
-export const assignmentResourceTypeEnum = mysqlEnum("assignment_resource_type", ["assignment","assignment_submission"]);
-export const quizCreationMethodEnum = mysqlEnum("quiz_creation_method", ["manual", "ai"]);
-export const quizStatusEnum = mysqlEnum("quiz_status", ["draft", "published", "closed", "archived"]);
-export const quizQuestionTypeEnum = mysqlEnum("quiz_question_type", ["mcq", "boolean"]);
+export const userStatusEnum = mysqlEnum("status", [
+  "active",
+  "inactive",
+  "suspended",
+]);
+export const assetExtensionEnum = mysqlEnum("extension", [
+  "pdf",
+  "mp4",
+  "png",
+  "jpg",
+  "jpeg",
+  "md",
+]);
+export const weekdayEnum = mysqlEnum("weekday", [
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "sunday",
+]);
+export const moduleProgressStatusEnum = mysqlEnum("module_progress_status", [
+  "not_started",
+  "in_progress",
+  "completed",
+  "skipped",
+]);
+export const enrollmentStatusEnum = mysqlEnum("enrollment_status", [
+  "active",
+  "completed",
+  "transferred",
+  "dropped",
+  "suspended",
+]);
+export const announcementAudienceEnum = mysqlEnum("target_audience", [
+  "all",
+  "trainers",
+  "students",
+]);
+export const assignmentStatusEnum = mysqlEnum("assignment_status", [
+  "draft",
+  "published",
+  "closed",
+]);
+export const assignmentSubmissionStatusEnum = mysqlEnum(
+  "assignment_submission_status",
+  ["not_submitted", "submitted", "late", "graded", "resubmitted"],
+);
+export const assignmentResourceTypeEnum = mysqlEnum(
+  "assignment_resource_type",
+  ["assignment", "assignment_submission"],
+);
+export const quizCreationMethodEnum = mysqlEnum("quiz_creation_method", [
+  "manual",
+  "ai",
+]);
+export const quizStatusEnum = mysqlEnum("quiz_status", [
+  "draft",
+  "published",
+  "closed",
+  "archived",
+]);
+export const quizQuestionTypeEnum = mysqlEnum("quiz_question_type", [
+  "mcq",
+  "boolean",
+]);
 export const quizOptionEnum = mysqlEnum("quiz_option", ["a", "b", "c", "d"]);
-export const quizAttemptStatusEnum = mysqlEnum("quiz_attempt_status", ["in_progress", "submitted", "cancelled", "cheated"]);
-export const attendanceStatusEnum = mysqlEnum("attendance_status", ["present", "absent", "leave"]);
-
+export const quizAttemptStatusEnum = mysqlEnum("quiz_attempt_status", [
+  "in_progress",
+  "submitted",
+  "cancelled",
+  "cheated",
+]);
+export const attendanceStatusEnum = mysqlEnum("attendance_status", [
+  "present",
+  "absent",
+  "leave",
+]);
 
 // Users table
 export const users = mysqlTable("users", {
@@ -56,7 +119,9 @@ export const users = mysqlTable("users", {
 export const trainerProfiles = mysqlTable("trainer_profiles", {
   id: varchar("id", { length: 21 }).primaryKey(),
 
-  userId: varchar("user_id", { length: 21 }).notNull().references(() => users.id),
+  userId: varchar("user_id", { length: 21 })
+    .notNull()
+    .references(() => users.id),
   employeeCode: varchar("employee_code", { length: 50 }).notNull().unique(),
 
   specialization: varchar("specialization", { length: 255 }),
@@ -74,7 +139,10 @@ export const trainerProfiles = mysqlTable("trainer_profiles", {
 export const studentProfiles = mysqlTable("student_profiles", {
   id: varchar("id", { length: 21 }).primaryKey(),
 
-  userId: varchar("user_id", { length: 21 }).notNull().unique().references(() => users.id),
+  userId: varchar("user_id", { length: 21 })
+    .notNull()
+    .unique()
+    .references(() => users.id),
   rollNumber: varchar("roll_number", { length: 50 }).notNull().unique(),
 
   dateOfBirth: date("date_of_birth"),
@@ -101,7 +169,9 @@ export const assets = mysqlTable("assets", {
   extension: assetExtensionEnum.notNull(),
 
   sizeBytes: bigint("size_bytes", { mode: "number" }),
-  uploadedBy: varchar("uploaded_by", { length: 21 }).notNull().references(() => users.id),
+  uploadedBy: varchar("uploaded_by", { length: 21 })
+    .notNull()
+    .references(() => users.id),
   uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
 
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -119,7 +189,9 @@ export const courses = mysqlTable("courses", {
   durationWeeks: int("duration_weeks"),
   feeAmount: decimal("fee_amount", { precision: 10, scale: 2 }),
 
-  createdBy: varchar("created_by", { length: 21 }).notNull().references(() => users.id),
+  createdBy: varchar("created_by", { length: 21 })
+    .notNull()
+    .references(() => users.id),
 
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
@@ -130,8 +202,12 @@ export const courses = mysqlTable("courses", {
 export const courseBatches = mysqlTable("course_batches", {
   id: varchar("id", { length: 21 }).primaryKey(),
 
-  courseId: varchar("course_id", { length: 21 }).notNull().references(() => courses.id),
-  trainerId: varchar("trainer_id", { length: 21 }).notNull().references(() => trainerProfiles.id),
+  courseId: varchar("course_id", { length: 21 })
+    .notNull()
+    .references(() => courses.id),
+  trainerId: varchar("trainer_id", { length: 21 })
+    .notNull()
+    .references(() => trainerProfiles.id),
 
   batchName: varchar("batch_name", { length: 255 }).notNull(),
 
@@ -147,7 +223,9 @@ export const courseBatches = mysqlTable("course_batches", {
 export const batchSchedules = mysqlTable("batch_schedules", {
   id: varchar("id", { length: 21 }).primaryKey(),
 
-  batchId: varchar("batch_id", { length: 21 }).notNull().references(() => courseBatches.id),
+  batchId: varchar("batch_id", { length: 21 })
+    .notNull()
+    .references(() => courseBatches.id),
 
   weekday: weekdayEnum.notNull(),
 
@@ -157,12 +235,13 @@ export const batchSchedules = mysqlTable("batch_schedules", {
   room: varchar("room", { length: 100 }),
 });
 
-
 // Course Modules
 export const courseModules = mysqlTable("course_modules", {
   id: varchar("id", { length: 21 }).primaryKey(),
 
-  courseId: varchar("course_id", { length: 21 }).notNull().references(() => courses.id),
+  courseId: varchar("course_id", { length: 21 })
+    .notNull()
+    .references(() => courses.id),
 
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
@@ -177,7 +256,9 @@ export const courseModules = mysqlTable("course_modules", {
 export const moduleLessons = mysqlTable("module_lessons", {
   id: varchar("id", { length: 21 }).primaryKey(),
 
-  moduleId: varchar("module_id", { length: 21 }).notNull().references(() => courseModules.id),
+  moduleId: varchar("module_id", { length: 21 })
+    .notNull()
+    .references(() => courseModules.id),
 
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
@@ -189,47 +270,62 @@ export const moduleLessons = mysqlTable("module_lessons", {
 });
 
 // Module Progress
-export const moduleProgress = mysqlTable("module_progress", {
-  id: varchar("id", { length: 21 }).primaryKey(),
+export const moduleProgress = mysqlTable(
+  "module_progress",
+  {
+    id: varchar("id", { length: 21 }).primaryKey(),
 
-  batchId: varchar("batch_id", { length: 21 }).notNull().references(() => courseBatches.id),
-  lessonId: varchar("lesson_id", { length: 21 }).notNull().references(() => moduleLessons.id),
+    batchId: varchar("batch_id", { length: 21 })
+      .notNull()
+      .references(() => courseBatches.id),
+    lessonId: varchar("lesson_id", { length: 21 })
+      .notNull()
+      .references(() => moduleLessons.id),
 
-  status: moduleProgressStatusEnum.notNull().default("not_started"),
+    status: moduleProgressStatusEnum.notNull().default("not_started"),
 
-  completedAt: timestamp("completed_at"),
-  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
-}, (table) => [
-  unique("batch_lesson_progress_unique").on(
-    table.batchId,
-    table.lessonId,
-  ),
-]);
+    completedAt: timestamp("completed_at"),
+    updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => [
+    unique("batch_lesson_progress_unique").on(table.batchId, table.lessonId),
+  ],
+);
 
 // Student Batch Enrollments
-export const enrollments = mysqlTable("enrollments", {
-  id: varchar("id", { length: 21 }).primaryKey(),
+export const enrollments = mysqlTable(
+  "enrollments",
+  {
+    id: varchar("id", { length: 21 }).primaryKey(),
 
-  batchId: varchar("batch_id", { length: 21 }).notNull().references(() => courseBatches.id),
-  studentId: varchar("student_id", { length: 21 }).notNull().references(() => studentProfiles.id),
+    batchId: varchar("batch_id", { length: 21 })
+      .notNull()
+      .references(() => courseBatches.id),
+    studentId: varchar("student_id", { length: 21 })
+      .notNull()
+      .references(() => studentProfiles.id),
 
-  status: enrollmentStatusEnum.notNull().default("active"),
+    status: enrollmentStatusEnum.notNull().default("active"),
 
-  enrolledAt: timestamp("enrolled_at").defaultNow().notNull(),
-  completedAt: timestamp("completed_at"),
+    enrolledAt: timestamp("enrolled_at").defaultNow().notNull(),
+    completedAt: timestamp("completed_at"),
 
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
-  deletedAt: timestamp("deleted_at"),
-}, (table) => [
-  unique("student_batch_unique").on(table.studentId, table.batchId),
-]);
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+    deletedAt: timestamp("deleted_at"),
+  },
+  (table) => [
+    unique("student_batch_unique").on(table.studentId, table.batchId),
+  ],
+);
 
 // Announcements
 export const announcements = mysqlTable("announcements", {
   id: varchar("id", { length: 21 }).primaryKey(),
 
-  createdBy: varchar("created_by", { length: 21 }).notNull().references(() => users.id),
+  createdBy: varchar("created_by", { length: 21 })
+    .notNull()
+    .references(() => users.id),
 
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description").notNull(),
@@ -251,12 +347,20 @@ export const announcements = mysqlTable("announcements", {
 export const assignments = mysqlTable("assignments", {
   id: varchar("id", { length: 21 }).primaryKey(),
 
-  batchId: varchar("batch_id", { length: 21 }).notNull().references(() => courseBatches.id),
+  batchId: varchar("batch_id", { length: 21 })
+    .notNull()
+    .references(() => courseBatches.id),
 
-  moduleId: varchar("module_id", { length: 21 }).references(() => courseModules.id),
-  lessonId: varchar("lesson_id", { length: 21 }).references(() => moduleLessons.id),
+  moduleId: varchar("module_id", { length: 21 }).references(
+    () => courseModules.id,
+  ),
+  lessonId: varchar("lesson_id", { length: 21 }).references(
+    () => moduleLessons.id,
+  ),
 
-  createdBy: varchar("created_by", { length: 21 }).notNull().references(() => trainerProfiles.id),
+  createdBy: varchar("created_by", { length: 21 })
+    .notNull()
+    .references(() => trainerProfiles.id),
 
   title: varchar("title", { length: 255 }).notNull(),
   instructions: text("instructions"),
@@ -272,13 +376,18 @@ export const assignments = mysqlTable("assignments", {
   deletedAt: timestamp("deleted_at"),
 });
 
-
 // Assignment Submissions
-export const assignmentSubmissions = mysqlTable("assignment_submissions", {
+export const assignmentSubmissions = mysqlTable(
+  "assignment_submissions",
+  {
     id: varchar("id", { length: 21 }).primaryKey(),
 
-    assignmentId: varchar("assignment_id", { length: 21 }).notNull().references(() => assignments.id),
-    enrollmentId: varchar("enrollment_id", { length: 21 }).notNull().references(() => enrollments.id),
+    assignmentId: varchar("assignment_id", { length: 21 })
+      .notNull()
+      .references(() => assignments.id),
+    enrollmentId: varchar("enrollment_id", { length: 21 })
+      .notNull()
+      .references(() => enrollments.id),
 
     status: assignmentSubmissionStatusEnum.notNull().default("not_submitted"),
     submittedAt: timestamp("submitted_at"),
@@ -287,22 +396,31 @@ export const assignmentSubmissions = mysqlTable("assignment_submissions", {
     marksObtained: int("marks_obtained"),
     teacherFeedback: text("teacher_feedback"),
 
-    gradedBy: varchar("graded_by", { length: 21 }).references(() => trainerProfiles.id),
+    gradedBy: varchar("graded_by", { length: 21 }).references(
+      () => trainerProfiles.id,
+    ),
     gradedAt: timestamp("graded_at"),
 
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
-  }, (table) => [
-    unique("assignment_enrollment_unique").on(table.assignmentId, table.enrollmentId),
+  },
+  (table) => [
+    unique("assignment_enrollment_unique").on(
+      table.assignmentId,
+      table.enrollmentId,
+    ),
   ],
 );
 
-
 // Assignment Reference Links
-export const assignmentReferenceLinks = mysqlTable("assignment_reference_links", {
+export const assignmentReferenceLinks = mysqlTable(
+  "assignment_reference_links",
+  {
     id: varchar("id", { length: 21 }).primaryKey(),
 
-    assignmentId: varchar("assignment_id", { length: 21 }).notNull().references(() => assignments.id),
+    assignmentId: varchar("assignment_id", { length: 21 })
+      .notNull()
+      .references(() => assignments.id),
     submissionId: varchar("submission_id", { length: 21 }),
 
     resourceType: assignmentResourceTypeEnum.notNull(),
@@ -311,22 +429,26 @@ export const assignmentReferenceLinks = mysqlTable("assignment_reference_links",
     url: text("url").notNull(),
 
     createdAt: timestamp("created_at").defaultNow().notNull(),
-  }, (table) => [
+  },
+  (table) => [
     foreignKey({
       columns: [table.submissionId],
       foreignColumns: [assignmentSubmissions.id],
       name: "assignment_reference_link_submission_fk",
     }),
-  ]
+  ],
 );
-
 
 // Quizzes
 export const quizzes = mysqlTable("quizzes", {
   id: varchar("id", { length: 21 }).primaryKey(),
 
-  batchId: varchar("batch_id", { length: 21 }).notNull().references(() => courseBatches.id),
-  createdBy: varchar("created_by", { length: 21 }).notNull().references(() => users.id),
+  batchId: varchar("batch_id", { length: 21 })
+    .notNull()
+    .references(() => courseBatches.id),
+  createdBy: varchar("created_by", { length: 21 })
+    .notNull()
+    .references(() => users.id),
 
   creationMethod: quizCreationMethodEnum.notNull().default("manual"),
 
@@ -349,7 +471,9 @@ export const quizzes = mysqlTable("quizzes", {
 export const quizQuestions = mysqlTable("quiz_questions", {
   id: varchar("id", { length: 21 }).primaryKey(),
 
-  quizId: varchar("quiz_id", { length: 21 }).notNull().references(() => quizzes.id),
+  quizId: varchar("quiz_id", { length: 21 })
+    .notNull()
+    .references(() => quizzes.id),
 
   type: quizQuestionTypeEnum.notNull(),
 
@@ -369,13 +493,18 @@ export const quizQuestions = mysqlTable("quiz_questions", {
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });
 
-
 // Quiz Attempts
-export const quizAttempts = mysqlTable("quiz_attempts", {
+export const quizAttempts = mysqlTable(
+  "quiz_attempts",
+  {
     id: varchar("id", { length: 21 }).primaryKey(),
 
-    quizId: varchar("quiz_id", { length: 21 }).notNull().references(() => quizzes.id),
-    enrollmentId: varchar("enrollment_id", { length: 21 }).notNull().references(() => enrollments.id),
+    quizId: varchar("quiz_id", { length: 21 })
+      .notNull()
+      .references(() => quizzes.id),
+    enrollmentId: varchar("enrollment_id", { length: 21 })
+      .notNull()
+      .references(() => enrollments.id),
 
     status: quizAttemptStatusEnum.notNull().default("in_progress"),
 
@@ -392,21 +521,22 @@ export const quizAttempts = mysqlTable("quiz_attempts", {
     updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
   },
   (table) => [
-    unique("quiz_enrollment_unique").on(
-      table.quizId,
-      table.enrollmentId,
-    ),
+    unique("quiz_enrollment_unique").on(table.quizId, table.enrollmentId),
   ],
 );
 
-
 // Quiz Answers
 export const quizAnswers = mysqlTable(
-  "quiz_answers", {
+  "quiz_answers",
+  {
     id: varchar("id", { length: 21 }).primaryKey(),
 
-    attemptId: varchar("attempt_id", { length: 21 }).notNull().references(() => quizAttempts.id),
-    questionId: varchar("question_id", { length: 21 }).notNull().references(() => quizQuestions.id),
+    attemptId: varchar("attempt_id", { length: 21 })
+      .notNull()
+      .references(() => quizAttempts.id),
+    questionId: varchar("question_id", { length: 21 })
+      .notNull()
+      .references(() => quizQuestions.id),
 
     selectedOption: quizOptionEnum,
     isCorrect: boolean("is_correct").notNull(),
@@ -416,40 +546,65 @@ export const quizAnswers = mysqlTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => [
-    unique("quiz_attempt_question_unique").on(table.attemptId, table.questionId),
+    unique("quiz_attempt_question_unique").on(
+      table.attemptId,
+      table.questionId,
+    ),
   ],
 );
 
 // Student Attendance
-export const studentAttendance = mysqlTable("student_attendance", {
-  id: varchar("id", { length: 21 }).primaryKey(),
-  enrollmentId: varchar("enrollment_id", { length: 21 }).notNull().references(() => enrollments.id),
-  studentId: varchar("student_id", { length: 21 }).notNull().references(() => studentProfiles.id),
+export const studentAttendance = mysqlTable(
+  "student_attendance",
+  {
+    id: varchar("id", { length: 21 }).primaryKey(),
+    enrollmentId: varchar("enrollment_id", { length: 21 })
+      .notNull()
+      .references(() => enrollments.id),
+    studentId: varchar("student_id", { length: 21 })
+      .notNull()
+      .references(() => studentProfiles.id),
 
-  attendanceDate: date("attendance_date").notNull(),
-  status: attendanceStatusEnum.notNull().default("absent"),
-  markedBy: varchar("marked_by", { length: 21 }).references(() => users.id),
+    attendanceDate: date("attendance_date", { mode: "string" }).notNull(),
+    status: attendanceStatusEnum.notNull().default("absent"),
+    markedBy: varchar("marked_by", { length: 21 }).references(() => users.id),
 
-  remarks: varchar("remarks", { length: 200 }),
+    remarks: varchar("remarks", { length: 200 }),
 
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
-}, (table) => [
-  unique("student_batch_date_unique").on(table.studentId, table.enrollmentId, table.attendanceDate),
-]);
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => [
+    unique("student_batch_date_unique").on(
+      table.studentId,
+      table.enrollmentId,
+      table.attendanceDate,
+    ),
+  ],
+);
 
 // Trainer Attendance
-export const trainerAttendance = mysqlTable("trainer_attendance", {
-  id: varchar("id", { length: 21 }).primaryKey(),
-  trainerId: varchar("trainer_id", { length: 21 }).notNull().references(() => trainerProfiles.id),
-  batchId: varchar("batch_id", { length: 21 }).notNull().references(() => courseBatches.id),
+export const trainerAttendance = mysqlTable(
+  "trainer_attendance",
+  {
+    id: varchar("id", { length: 21 }).primaryKey(),
+    trainerId: varchar("trainer_id", { length: 21 })
+      .notNull()
+      .references(() => trainerProfiles.id),
+    batchId: varchar("batch_id", { length: 21 })
+      .notNull()
+      .references(() => courseBatches.id),
 
-  attendanceDate: date("attendance_date").notNull(),
-  status: attendanceStatusEnum.notNull().default("absent"),
-  markedBy: varchar("marked_by", { length: 21 }).references(() => users.id),
+    attendanceDate: date("attendance_date", { mode: "string" }).notNull(),
+    status: attendanceStatusEnum.notNull().default("absent"),
+    markedBy: varchar("marked_by", { length: 21 }).references(() => users.id),
 
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
-}, (table) => [
-  unique("trainer_date_unique").on(table.trainerId, table.attendanceDate),
-]);
+    remarks: varchar("remarks", { length: 200 }),
+
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => [
+    unique("trainer_date_unique").on(table.trainerId, table.attendanceDate),
+  ],
+);

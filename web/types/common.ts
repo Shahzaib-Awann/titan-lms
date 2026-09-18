@@ -47,3 +47,8 @@ export type AssignmentStatus = "draft" | "published" | "closed";
  * Represents the current status of an assignment submission.
  */
 export type AssignmentSubmissionStatus = "not_submitted" | "submitted" | "late" | "graded" | "resubmitted";
+
+/**
+ * Represents the status of an attendance.
+ */
+export type AttendanceStatus = "present" | "absent" | "leave";

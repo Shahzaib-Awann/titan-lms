@@ -1,6 +1,7 @@
 "use client";
 
 import { MoreHorizontal } from "lucide-react";
+import { ColumnDef } from "@tanstack/react-table";
 
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -12,17 +13,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { DataTableColumnHeader } from "@/components/ui/data-table/data-table-column-header";
-import { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import Link from "next/link";
+import { formatDate } from "@/lib/helpers/date-fns";
 
 export interface Attendance {
-  id: number;
-  student_id: string;
-  student_name: string;
-  last_marked: string;
-  batch: string;
+  id: string;
+  studentRollNo: string;
+  studentName: string;
+  attendanceDate: string;
+  lastMarked: string;
+  courseName: string;
+  batchName: string;
   status: "present" | "absent" | "leave";
 }
 
@@ -56,37 +58,72 @@ export const columns: ColumnDef<Attendance>[] = [
   },
 
   {
-    accessorKey: "student_id",
+    accessorKey: "studentRollNo",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Student ID" />
     ),
     cell: ({ row }) => (
-      <div className="font-medium">{row.getValue("student_id")}</div>
+      <div className="font-medium">{row.getValue("studentRollNo")}</div>
     ),
   },
 
   {
-    accessorKey: "student_name",
+    accessorKey: "studentName",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Student Name" />
     ),
     cell: ({ row }) => (
-      <div className="font-medium">{row.getValue("student_name")}</div>
+      <div className="font-medium">{row.getValue("studentName")}</div>
     ),
   },
 
   {
-    accessorKey: "batch",
+    accessorKey: "courseName",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Course" />
+    ),
+  },
+
+  {
+    accessorKey: "batchName",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Batch" />
     ),
   },
 
   {
-    accessorKey: "last_marked",
+    accessorKey: "attendanceDate",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Attendance Date" />
+    ),
+    cell: ({ row }) => {
+      const attendanceDate = row.getValue("attendanceDate") as string;
+
+      return <div>{formatDate(attendanceDate)}</div>;
+    },
+  },
+
+  {
+    accessorKey: "lastMarked",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Last Marked" />
     ),
+    cell: ({ row }) => {
+      const lastMarked = row.getValue("lastMarked") as string;
+
+      return (
+        <div className="flex items-center justify-center flex-col">
+          <span>{formatDate(lastMarked)}</span>
+          <span className="opacity-75">
+            {new Date(lastMarked).toLocaleTimeString("en-US", {
+              timeZone: "UTC",
+              hour: "numeric",
+              minute: "2-digit",
+            })}
+          </span>
+        </div>
+      );
+    },
   },
 
   {
@@ -131,16 +168,10 @@ export const columns: ColumnDef<Attendance>[] = [
 
               <DropdownMenuItem
                 onClick={() =>
-                  navigator.clipboard.writeText(student.student_id)
+                  navigator.clipboard.writeText(student.studentRollNo)
                 }
               >
-                Copy Student ID
-              </DropdownMenuItem>
-
-              <DropdownMenuItem
-                render={<Link href={`/students/edit/${student.id}`} />}
-              >
-                Edit Student
+                Copy Student Roll No
               </DropdownMenuItem>
             </DropdownMenuGroup>
           </DropdownMenuContent>
